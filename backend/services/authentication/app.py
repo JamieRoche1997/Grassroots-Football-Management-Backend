@@ -3,12 +3,6 @@ import os
 import logging
 from flask import Flask, request, jsonify
 from firebase_admin import auth, credentials, firestore, initialize_app
-from firebase_admin.auth import (
-    InvalidIdTokenError,
-    ExpiredIdTokenError,
-    RevokedIdTokenError,
-    revoke_refresh_tokens,
-)
 from flask_cors import CORS
 from google.cloud import secretmanager
 
@@ -145,33 +139,6 @@ def sign_in():
             ),
             200,
         )
-
-    except (InvalidIdTokenError, ExpiredIdTokenError, RevokedIdTokenError):
-        return jsonify({"error": "Invalid or expired ID token"}), 401
-    except KeyError as e:
-        return jsonify({"error": f"Missing key: {str(e)}"}), 400
-    except ValueError as e:
-        return jsonify({"error": f"Value error: {str(e)}"}), 400
-
-
-# Logout
-@app.route("/logout", methods=["POST"])
-def logout():
-    try:
-        data = request.json
-        id_token = data.get("idToken")
-
-        if not id_token:
-            return jsonify({"error": "ID token is required"}), 400
-
-        # Verify the ID token and get the user's UID
-        decoded_token = auth.verify_id_token(id_token)
-        uid = decoded_token["uid"]
-
-        # Revoke the user's refresh tokens
-        revoke_refresh_tokens(uid)
-
-        return jsonify({"message": "User logged out and tokens revoked"}), 200
 
     except (InvalidIdTokenError, ExpiredIdTokenError, RevokedIdTokenError):
         return jsonify({"error": "Invalid or expired ID token"}), 401
