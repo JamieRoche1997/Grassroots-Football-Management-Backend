@@ -109,6 +109,40 @@ paths:
           description: Internal server error
 
   # User Management Microservice Routes
+  /user/create:
+    post:
+      x-google-backend:
+        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/create
+      summary: Create a new user in Firestore
+      description: Create a new user document in Firestore with email, name, and role
+      operationId: createUser
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: User creation data
+          required: true
+          schema:
+            type: object
+            properties:
+              uid:
+                type: string
+              email:
+                type: string
+              name:
+                type: string
+              role:
+                type: string
+      responses:
+        '201':
+          description: User created successfully
+        '400':
+          description: Invalid input or user already exists
+        '500':
+          description: Internal server error
   /user/update:
     post:
       x-google-backend:

@@ -56,6 +56,51 @@ except Exception as e:
 db = firestore.client()
 
 
+# Create Firestore user
+def create_firestore_user(user_data):
+    try:
+        user_ref = db.collection("users").document(user_data["email"])
+        user_ref.set(
+            {
+                "uid": user_data["uid"],
+                "name": user_data["name"],
+                "email": user_data["email"],
+                "role": user_data["role"],
+            }
+        )
+    except Exception as e:
+        logging.error("Failed to create Firestore user: %s", str(e))
+        raise RuntimeError(f"Failed to create Firestore user: {str(e)}") from e
+
+
+@app.route("/user/create", methods=["POST"])
+def create_user_profile():
+    try:
+        data = request.json
+        uid = data["uid"]
+        email = data["email"]
+        name = data["name"]
+        role = data.get("role", "player")  # Default role is 'player'
+
+        # Store user information in Firestore
+        user_data = {
+            "uid": uid,
+            "name": name,
+            "email": email,
+            "role": role,
+        }
+        create_firestore_user(user_data)
+
+        return jsonify({"message": "User created successfully"}), 201
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing key: {str(e)}"}), 400
+    except TypeError as e:
+        return jsonify({"error": f"Type error: {str(e)}"}), 400
+    except ValueError as e:
+        return jsonify({"error": f"Value error: {str(e)}"}), 400
+
+
 @app.route("/user/update", methods=["POST"])
 def update_user_profile():
     """

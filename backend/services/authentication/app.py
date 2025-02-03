@@ -57,23 +57,6 @@ except Exception as e:
 db = firestore.client()
 
 
-# Create Firestore user
-def create_firestore_user(user_data):
-    try:
-        user_ref = db.collection("users").document(user_data["email"])
-        user_ref.set(
-            {
-                "uid": user_data["uid"],
-                "name": user_data["name"],
-                "email": user_data["email"],
-                "role": user_data["role"],
-            }
-        )
-    except Exception as e:
-        logging.error("Failed to create Firestore user: %s", str(e))
-        raise RuntimeError(f"Failed to create Firestore user: {str(e)}") from e
-
-
 # Sign Up
 @app.route("/signup", methods=["POST"])
 def register():
@@ -82,7 +65,6 @@ def register():
         email = data["email"]
         password = data["password"]
         name = data["name"]
-        role = data.get("role", "player")  # Default role is 'player'
 
         # Create user in Firebase Authentication
         user = auth.create_user(
@@ -91,15 +73,6 @@ def register():
             display_name=name,
         )
 
-        # Store user information in Firestore
-        user_data = {
-            "uid": user.uid,
-            "name": name,
-            "email": email,
-            "role": role,
-        }
-        create_firestore_user(user_data)
-
         return (
             jsonify(
                 {
@@ -107,7 +80,6 @@ def register():
                     "firebase_uid": user.uid,
                     "email": email,
                     "name": name,
-                    "role": role,
                 }
             ),
             201,
