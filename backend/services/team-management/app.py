@@ -65,6 +65,7 @@ def create_or_join_club():
         data = request.json
         club_name = data.get("clubName")
         coach_email = data.get("coachEmail")
+        county = data.get("county")
         age_groups = data.get("ageGroups")
         divisions = data.get("divisions")
 
@@ -87,6 +88,7 @@ def create_or_join_club():
                     "clubName": club_name,
                     "clubNameLower": club_name.lower(),
                     "coaches": [coach_email],
+                    "county": county,
                     "ageGroups": [age_groups],
                     "divisions": [divisions],
                     "createdAt": fs.SERVER_TIMESTAMP,
@@ -108,7 +110,7 @@ def create_or_join_club():
 @app.route("/club/search", methods=["GET"])
 def search_clubs():
     """
-    Search for clubs based on club name, county, age group, or division.
+    Search for clubs based on club name (partial match), county, age group, or division.
     """
     try:
         # Get query parameters
@@ -117,21 +119,40 @@ def search_clubs():
         age_group = request.args.get("ageGroup", "").strip()
         division = request.args.get("division", "").strip()
 
-        # Build the query dynamically based on filters
+        # Start building the query
         clubs_ref = db.collection("clubs")
-        query = clubs_ref
+        queries = []
 
+        # Partial match for club name using range queries
         if club_name:
-            query = query.where("clubNameLower", "==", club_name)
-        if county:
-            query = query.where("county", "==", county)
-        if age_group:
-            query = query.where("ageGroups", "array_contains", age_group)
-        if division:
-            query = query.where("divisions", "array_contains", division)
+            queries.append(("clubNameLower", ">=", club_name))
+            queries.append(("clubNameLower", "<", club_name + "\uf8ff"))
 
-        # Execute query and return results
-        clubs = [doc.to_dict() for doc in query.stream()]
+        # Filter by county if provided
+        if county:
+            queries.append(("county", "==", county))
+
+        # Filter by age group if provided
+        if age_group:
+            queries.append(("ageGroups", "array_contains", age_group))
+
+        # Filter by division if provided
+        if division:
+            queries.append(("divisions", "array_contains", division))
+
+        # Execute the query dynamically based on filters
+        if not queries:
+            # If no filters provided, return all clubs
+            club_docs = clubs_ref.stream()
+        else:
+            # Dynamically chain query conditions
+            query = clubs_ref
+            for field, op, value in queries:
+                query = query.where(field, op, value)
+            club_docs = query.stream()
+
+        # Return results as JSON
+        clubs = [doc.to_dict() for doc in club_docs]
         return jsonify(clubs), 200
 
     except Exception as e:
