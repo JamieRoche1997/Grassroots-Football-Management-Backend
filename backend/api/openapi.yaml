@@ -139,3 +139,33 @@ paths:
           description: Invalid input
         '500':
           description: Internal server error
+
+  /user/check:
+    get:
+      x-google-backend:
+        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/check  
+      summary: Check if a user exists
+      description: Check if a user exists in Firestore by email
+      operationId: checkUserExists
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: email
+          description: The email of the user to check
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successful response indicating whether the user exists
+          schema:
+            type: object
+            properties:
+              exists:
+                type: boolean
+              message:
+                type: string
+        '400':
+          description: Missing or invalid email parameter
+        '500':
+          description: Internal server error
