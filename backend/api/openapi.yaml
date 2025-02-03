@@ -143,6 +143,7 @@ paths:
           description: Invalid input or user already exists
         '500':
           description: Internal server error
+
   /user/update:
     post:
       x-google-backend:
@@ -225,6 +226,16 @@ paths:
               clubName:
                 type: string
               coachEmail:
+                type: string
+              ageGroups:
+                type: array
+                items:
+                  type: string
+              divisions:
+                type: array
+                items:
+                  type: string
+              county:
                 type: string
       responses:
         '201':
