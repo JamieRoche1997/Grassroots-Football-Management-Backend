@@ -91,6 +91,29 @@ def update_user_profile():
         return jsonify({"error": f"Invalid input: {str(e)}"}), 400
 
 
+@app.route("/user/check", methods=["GET"])
+def check_user_exists():
+    """
+    Check if a user exists in Firestore based on their email.
+    """
+    try:
+        email = request.args.get("email")
+        if not email:
+            return jsonify({"error": "Email is required"}), 400
+
+        user_ref = db.collection("users").document(email)
+        user_doc = user_ref.get()
+
+        if user_doc.exists:
+            return jsonify({"exists": True, "message": "User already exists"}), 200
+        else:
+            return jsonify({"exists": False}), 200
+
+    except Exception as e:
+        logger.error("Unexpected error: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+
 # Run the Flask app
 if __name__ == "__main__":
     port = int(

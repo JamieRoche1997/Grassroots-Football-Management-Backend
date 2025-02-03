@@ -3,6 +3,11 @@ import os
 import logging
 from flask import Flask, request, jsonify
 from firebase_admin import auth, credentials, firestore, initialize_app
+from firebase_admin.auth import (
+    InvalidIdTokenError,
+    ExpiredIdTokenError,
+    RevokedIdTokenError,
+)
 from flask_cors import CORS
 from google.cloud import secretmanager
 
