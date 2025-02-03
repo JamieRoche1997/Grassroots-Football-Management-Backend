@@ -206,35 +206,35 @@ paths:
 
   # Team Management Microservice Routes
   /club/create-join:
-  post:
-    x-google-backend:
-      address: https://microservice-team-management-180320540339.europe-west2.run.app/club/create-join
-    summary: Create a club or add a coach to an existing club
-    consumes:
-      - application/json
-    produces:
-      - application/json
-    parameters:
-      - in: body
-        name: body
-        description: Club data
-        required: true
-        schema:
-          type: object
-          properties:
-            clubName:
-              type: string
-            coachEmail:
-              type: string
-    responses:
-      '201':
-        description: New club created
-      '200':
-        description: Coach added to existing club
-      '400':
-        description: Invalid input
-      '500':
-        description: Internal server error
+    post:
+      x-google-backend:
+        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/create-join
+      summary: Create a club or add a coach to an existing club
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Club data
+          required: true
+          schema:
+            type: object
+            properties:
+              clubName:
+                type: string
+              coachEmail:
+                type: string
+      responses:
+        '201':
+          description: New club created
+        '200':
+          description: Coach added to existing club
+        '400':
+          description: Invalid input
+        '500':
+          description: Internal server error
 
   /club/search:
     get:
