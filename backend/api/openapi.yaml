@@ -203,3 +203,121 @@ paths:
           description: Missing or invalid email parameter
         '500':
           description: Internal server error
+
+  # Team Management Microservice Routes
+  /club/create-join:
+  post:
+    x-google-backend:
+      address: https://microservice-team-management-180320540339.europe-west2.run.app/club/create-join
+    summary: Create a club or add a coach to an existing club
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        description: Club data
+        required: true
+        schema:
+          type: object
+          properties:
+            clubName:
+              type: string
+            coachEmail:
+              type: string
+    responses:
+      '201':
+        description: New club created
+      '200':
+        description: Coach added to existing club
+      '400':
+        description: Invalid input
+      '500':
+        description: Internal server error
+
+  /club/search:
+    get:
+      x-google-backend:
+        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/search
+      summary: Search for clubs
+      description: Search for clubs using filters like club name, county, age group, or division
+      operationId: searchClubs
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          description: The club name to search for
+          required: false
+          type: string
+        - in: query
+          name: county
+          description: The county where the club is located
+          required: false
+          type: string
+        - in: query
+          name: ageGroup
+          description: The age group to filter by
+          required: false
+          type: string
+        - in: query
+          name: division
+          description: The division to filter by
+          required: false
+          type: string
+      responses:
+        '200':
+          description: List of clubs matching the criteria
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                clubName:
+                  type: string
+                county:
+                  type: string
+                ageGroups:
+                  type: array
+                  items:
+                    type: string
+                divisions:
+                  type: array
+                  items:
+                    type: string
+                coaches:
+                  type: array
+                  items:
+                    type: string
+        '500':
+          description: Internal server error
+
+  /club/join-request:
+    post:
+      x-google-backend:
+        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/join-request
+      summary: Submit a join request to a club
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Join request data
+          required: true
+          schema:
+            type: object
+            properties:
+              playerEmail:
+                type: string
+              clubName:
+                type: string
+      responses:
+        '201':
+          description: Join request submitted successfully
+        '400':
+          description: Invalid input
+        '500':
+          description: Internal server error
