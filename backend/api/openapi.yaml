@@ -1,0 +1,141 @@
+swagger: '2.0'
+info:
+  title: Grassroots Football Management API
+  description: API Gateway for Grassroots Football Management microservices
+  version: 1.0.0
+host: gfm-1ykrsotxghm8m.apigateway.grassroots-football-management.cloud.goog
+x-google-endpoints:
+- name: gfm-1ykrsotxghm8m.apigateway.grassroots-football-management.cloud.goog
+  allowCors: True
+schemes:
+  - https
+paths:
+  # Authentication Microservice Routes
+  /signup:
+    post:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app/signup  
+      summary: Register a new user
+      description: Register a new user with email, password, and name
+      operationId: registerUser
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: User registration data
+          required: true
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+              password:
+                type: string
+              name:
+                type: string
+              role:
+                type: string
+      responses:
+        '201':
+          description: User registered successfully
+        '400':
+          description: Invalid input or email already exists
+        '500':
+          description: Internal server error
+
+  /signin:
+    post:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app/signin  
+      summary: Sign in a user
+      description: Authenticate a user with an ID token
+      operationId: signInUser
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: User sign-in data
+          required: true
+          schema:
+            type: object
+            properties:
+              idToken:
+                type: string
+      responses:
+        '200':
+          description: User signed in successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Invalid or expired ID token
+        '500':
+          description: Internal server error
+
+  /logout:
+    post:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app/logout 
+      summary: Log out a user
+      description: Revoke a user's refresh tokens
+      operationId: logoutUser
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: User logout data
+          required: true
+          schema:
+            type: object
+            properties:
+              idToken:
+                type: string
+      responses:
+        '200':
+          description: User logged out successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Invalid or expired ID token
+        '500':
+          description: Internal server error
+
+  # User Management Microservice Routes
+  /user/update:
+    post:
+      x-google-backend:
+        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/update  
+      summary: Update a user's profile
+      description: Update a user's profile in Firestore
+      operationId: updateUserProfile
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: User profile data to update
+          required: true
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+              name:
+                type: string
+      responses:
+        '200':
+          description: User profile updated successfully
+        '400':
+          description: Invalid input
+        '500':
+          description: Internal server error
