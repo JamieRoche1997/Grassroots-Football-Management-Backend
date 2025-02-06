@@ -167,16 +167,21 @@ def join_club_request():
     """
     try:
         data = request.json
+        name = data.get("name")
         player_email = data.get("playerEmail")
         club_name = data.get("clubName")
 
-        if not player_email or not club_name:
-            return jsonify({"error": "Player email and club name are required"}), 400
+        if not player_email or not club_name or name:
+            return (
+                jsonify({"error": "Name, player email and club name are required"}),
+                400,
+            )
 
         # Save the join request in Firestore
         join_requests_ref = db.collection("joinRequests")
         join_requests_ref.add(
             {
+                "name": name,
                 "playerEmail": player_email,
                 "clubName": club_name,
                 "status": "pending",
@@ -192,7 +197,7 @@ def join_club_request():
     except ValueError as e:
         logging.error("Invalid value: %s", str(e))
         return jsonify({"error": "Invalid value"}), 400
-    
+
 
 @app.route("/club/requests", methods=["GET"])
 def get_join_requests():
@@ -205,7 +210,11 @@ def get_join_requests():
             return jsonify({"error": "Club name is required"}), 400
 
         # Query for pending requests for the club
-        join_requests_ref = db.collection("joinRequests").where("clubName", "==", club_name).where("status", "==", "pending")
+        join_requests_ref = (
+            db.collection("joinRequests")
+            .where("clubName", "==", club_name)
+            .where("status", "==", "pending")
+        )
         requests = [req.to_dict() for req in join_requests_ref.stream()]
         return jsonify(requests), 200
 
@@ -228,7 +237,11 @@ def approve_join_request():
             return jsonify({"error": "Player email and club name are required"}), 400
 
         # Update join request status to approved
-        join_requests_ref = db.collection("joinRequests").where("playerEmail", "==", player_email).where("clubName", "==", club_name)
+        join_requests_ref = (
+            db.collection("joinRequests")
+            .where("playerEmail", "==", player_email)
+            .where("clubName", "==", club_name)
+        )
         for req in join_requests_ref.stream():
             req.reference.update({"status": "approved"})
 
@@ -257,7 +270,11 @@ def reject_join_request():
             return jsonify({"error": "Player email and club name are required"}), 400
 
         # Update join request status to rejected
-        join_requests_ref = db.collection("joinRequests").where("playerEmail", "==", player_email).where("clubName", "==", club_name)
+        join_requests_ref = (
+            db.collection("joinRequests")
+            .where("playerEmail", "==", player_email)
+            .where("clubName", "==", club_name)
+        )
         for req in join_requests_ref.stream():
             req.reference.update({"status": "rejected"})
 
