@@ -159,6 +159,30 @@ def check_user_exists():
         return jsonify({"error": "Internal server error"}), 500
 
 
+@app.route("/user/club-name", methods=["GET"])
+def get_user_club_name():
+    """
+    Get the club name associated with a user's email.
+    """
+    try:
+        email = request.args.get("email")
+        if not email:
+            return jsonify({"error": "Email is required"}), 400
+
+        user_ref = db.collection("users").document(email)
+        user_doc = user_ref.get()
+
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            return jsonify({"clubName": user_data.get("clubName")}), 200
+        else:
+            return jsonify({"error": "User not found"}), 404
+
+    except Exception as e:
+        logger.error("Unexpected error: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+
 # Run the Flask app
 if __name__ == "__main__":
     port = int(
