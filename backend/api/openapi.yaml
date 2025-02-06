@@ -204,6 +204,34 @@ paths:
         '500':
           description: Internal server error
 
+  /user/club-name:
+    get:
+      x-google-backend:
+        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/club-name 
+      summary: Retrieve user's club name
+      description: Retrieve the club name of a user in Firestore by email
+      operationId: getUserClubName
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: email
+          description: The email of the user to check
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successful response indicating the user's club name
+          schema:
+            type: object
+            properties:
+              clubName:
+                type: string
+        '400':
+          description: Missing or invalid email parameter
+        '500':
+          description: Internal server error
+
   # Team Management Microservice Routes
   /club/create-join:
     post:
@@ -307,5 +335,89 @@ paths:
           description: Join request submitted
         '400':
           description: Invalid input
+        '500':
+          description: Internal server error
+
+    /club/requests:
+    get:
+      x-google-backend:
+        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/requests
+      summary: Retrieve pending join requests
+      operationId: getJoinRequests
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          type: string
+          description: The club name to retrieve join requests for
+          required: true
+      responses:
+        '200':
+          description: List of pending join requests
+        '400':
+          description: Club name is required
+        '500':
+          description: Internal server error
+
+  /club/requests/approve:
+    post:
+      x-google-backend:
+        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/requests/approve
+      summary: Approve a player's join request
+      operationId: approveJoinRequest
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              playerEmail:
+                type: string
+                description: Email of the player to approve
+              clubName:
+                type: string
+                description: The club name where the player requested to join
+      responses:
+        '200':
+          description: Player added to the club
+        '400':
+          description: Player email and club name are required
+        '500':
+          description: Internal server error
+
+  /club/requests/reject:
+    post:
+      x-google-backend:
+        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/requests/reject
+      summary: Reject a player's join request
+      operationId: rejectJoinRequest
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              playerEmail:
+                type: string
+                description: Email of the player to reject
+              clubName:
+                type: string
+                description: The club name where the player requested to join
+      responses:
+        '200':
+          description: Join request rejected
+        '400':
+          description: Player email and club name are required
         '500':
           description: Internal server error
