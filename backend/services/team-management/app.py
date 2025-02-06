@@ -110,7 +110,7 @@ def create_or_join_club():
 @app.route("/club/search", methods=["GET"])
 def search_clubs():
     """
-    Search for clubs based on club name (partial match), county, age group, or division.
+    Search for clubs based on club name, county, age group, or division.
     """
     try:
         # Get query parameters
@@ -192,6 +192,80 @@ def join_club_request():
     except ValueError as e:
         logging.error("Invalid value: %s", str(e))
         return jsonify({"error": "Invalid value"}), 400
+    
+
+@app.route("/club/requests", methods=["GET"])
+def get_join_requests():
+    """
+    Retrieve pending join requests for a specific club.
+    """
+    try:
+        club_name = request.args.get("clubName")
+        if not club_name:
+            return jsonify({"error": "Club name is required"}), 400
+
+        # Query for pending requests for the club
+        join_requests_ref = db.collection("joinRequests").where("clubName", "==", club_name).where("status", "==", "pending")
+        requests = [req.to_dict() for req in join_requests_ref.stream()]
+        return jsonify(requests), 200
+
+    except Exception as e:
+        logging.error("Error retrieving join requests: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route("/club/requests/approve", methods=["POST"])
+def approve_join_request():
+    """
+    Approve a player's join request and add them to the club's players list.
+    """
+    try:
+        data = request.json
+        player_email = data.get("playerEmail")
+        club_name = data.get("clubName")
+
+        if not player_email or not club_name:
+            return jsonify({"error": "Player email and club name are required"}), 400
+
+        # Update join request status to approved
+        join_requests_ref = db.collection("joinRequests").where("playerEmail", "==", player_email).where("clubName", "==", club_name)
+        for req in join_requests_ref.stream():
+            req.reference.update({"status": "approved"})
+
+        # Add player to club's players list
+        club_ref = db.collection("clubs").document(club_name)
+        club_ref.update({"players": fs.ArrayUnion([player_email])})
+
+        return jsonify({"message": "Player added to the club"}), 200
+
+    except Exception as e:
+        logging.error("Error approving join request: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route("/club/requests/reject", methods=["POST"])
+def reject_join_request():
+    """
+    Reject a player's join request.
+    """
+    try:
+        data = request.json
+        player_email = data.get("playerEmail")
+        club_name = data.get("clubName")
+
+        if not player_email or not club_name:
+            return jsonify({"error": "Player email and club name are required"}), 400
+
+        # Update join request status to rejected
+        join_requests_ref = db.collection("joinRequests").where("playerEmail", "==", player_email).where("clubName", "==", club_name)
+        for req in join_requests_ref.stream():
+            req.reference.update({"status": "rejected"})
+
+        return jsonify({"message": "Join request rejected"}), 200
+
+    except Exception as e:
+        logging.error("Error rejecting join request: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # Run the Flask app
