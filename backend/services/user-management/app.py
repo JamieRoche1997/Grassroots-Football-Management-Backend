@@ -159,8 +159,8 @@ def check_user_exists():
         return jsonify({"error": "Internal server error"}), 500
 
 
-@app.route("/user/club-name", methods=["GET"])
-def get_user_club_name():
+@app.route("/user/club-info", methods=["GET"])
+def get_user_club_info():
     """
     Get the club name associated with a user's email.
     """
@@ -174,7 +174,10 @@ def get_user_club_name():
 
         if user_doc.exists:
             user_data = user_doc.to_dict()
-            return jsonify({"clubName": user_data.get("clubName")}), 200
+            return jsonify({"clubName": user_data.get("clubName"),
+                            "ageGroup": user_data.get("ageGroup"),
+                            "division": user_data.get("division"),
+                            }), 200
         else:
             return jsonify({"error": "User not found"}), 404
 
