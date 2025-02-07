@@ -78,9 +78,35 @@ def create_or_join_club():
         club_doc = club_ref.get()
 
         if club_doc.exists:
-            # Add the coach to the existing club
-            club_ref.update({"coaches": fs.ArrayUnion([coach_email])})
-            return jsonify({"message": "Coach added to existing club"}), 200
+            # Get current club data
+            current_club_data = club_doc.to_dict()
+
+            # Initialize lists if not already present
+            current_age_groups = current_club_data.get("ageGroups", [])
+            current_divisions = current_club_data.get("divisions", [])
+
+            # Determine which age groups and divisions to add
+            age_groups_to_add = [age for age in age_groups if age not in current_age_groups]
+            divisions_to_add = [division for division in divisions if division not in current_divisions]
+
+            # Update the club document with new coach, age groups, and divisions
+            updates = {
+                "coaches": fs.ArrayUnion([coach_email])
+            }
+
+            # Add only the new age groups and divisions
+            if age_groups_to_add:
+                updates["ageGroups"] = fs.ArrayUnion(age_groups_to_add)
+            if divisions_to_add:
+                updates["divisions"] = fs.ArrayUnion(divisions_to_add)
+
+            # Perform the update
+            club_ref.update(updates)
+            return jsonify({
+                "message": "Coach added to existing club with updated age groups and divisions",
+                "addedAgeGroups": age_groups_to_add,
+                "addedDivisions": divisions_to_add
+            }), 200
         else:
             # Create a new club with the coach
             club_ref.set(
@@ -89,8 +115,8 @@ def create_or_join_club():
                     "clubNameLower": club_name.lower(),
                     "coaches": [coach_email],
                     "county": county,
-                    "ageGroups": [age_groups],
-                    "divisions": [divisions],
+                    "ageGroups": age_groups,
+                    "divisions": divisions,
                     "createdAt": fs.SERVER_TIMESTAMP,
                 }
             )
@@ -105,6 +131,7 @@ def create_or_join_club():
     except Exception as e:
         logging.error("An unexpected error occurred: %s", str(e))
         return jsonify({"error": "An unexpected error occurred"}), 500
+
 
 
 @app.route("/club/search", methods=["GET"])
