@@ -453,3 +453,35 @@ paths:
           description: Missing or invalid parameters
         '500':
           description: Internal server error
+
+  /club/players:
+    get:
+      x-google-backend:
+        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/players
+      summary: Retrieve players for a specific club, age group, and division
+      operationId: getPlayers
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          type: string
+          description: The club name to retrieve players for
+          required: true
+        - in: query
+          name: ageGroup
+          type: string
+          description: The age group to filter players by
+          required: true
+        - in: query
+          name: division
+          type: string
+          description: The division to filter players by
+          required: true
+      responses:
+        '200':
+          description: List of players for the specified criteria
+        '400':
+          description: Missing or invalid query parameters
+        '500':
+          description: Internal server error
