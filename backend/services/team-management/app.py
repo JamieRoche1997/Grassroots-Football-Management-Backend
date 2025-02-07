@@ -58,128 +58,95 @@ db = firestore.client()
 
 @app.route("/club/create-join", methods=["POST"])
 def create_or_join_club():
-    """
-    Create a new club or add the coach to an existing club.
-    """
     try:
         data = request.json
         club_name = data.get("clubName")
         coach_email = data.get("coachEmail")
         county = data.get("county")
-        age_groups = data.get("ageGroups")
-        divisions = data.get("divisions")
+        
+        # Convert to arrays if they are strings
+        age_groups = data.get("ageGroups", [])
+        divisions = data.get("divisions", [])
 
-        # Validate input
+        if isinstance(age_groups, str):
+            age_groups = [age.strip() for age in age_groups.split(",")]
+
+        if isinstance(divisions, str):
+            divisions = [division.strip() for division in divisions.split(",")]
+
         if not club_name or not coach_email:
             return jsonify({"error": "Club name and coach email are required"}), 400
 
-        # Check if the club already exists
+        # Check if the club exists
         club_ref = db.collection("clubs").document(club_name)
         club_doc = club_ref.get()
 
         if club_doc.exists:
-            # Get current club data
-            current_club_data = club_doc.to_dict()
+            current_data = club_doc.to_dict()
+            existing_teams = current_data.get("teams", [])
 
-            # Initialize lists if not already present
-            current_age_groups = current_club_data.get("ageGroups", [])
-            current_divisions = current_club_data.get("divisions", [])
+            # Determine which teams to add
+            new_teams = [
+                {"ageGroup": age_group, "division": division}
+                for age_group in age_groups
+                for division in divisions
+                if {"ageGroup": age_group, "division": division} not in existing_teams
+            ]
 
-            # Determine which age groups and divisions to add
-            age_groups_to_add = [age for age in age_groups if age not in current_age_groups]
-            divisions_to_add = [division for division in divisions if division not in current_divisions]
-
-            # Update the club document with new coach, age groups, and divisions
+            # Update with new teams and coaches
             updates = {
-                "coaches": fs.ArrayUnion([coach_email])
+                "coaches": fs.ArrayUnion([coach_email]),
+                "teams": fs.ArrayUnion(new_teams)
             }
-
-            # Add only the new age groups and divisions
-            if age_groups_to_add:
-                updates["ageGroups"] = fs.ArrayUnion(age_groups_to_add)
-            if divisions_to_add:
-                updates["divisions"] = fs.ArrayUnion(divisions_to_add)
-
-            # Perform the update
             club_ref.update(updates)
-            return jsonify({
-                "message": "Coach added to existing club with updated age groups and divisions",
-                "addedAgeGroups": age_groups_to_add,
-                "addedDivisions": divisions_to_add
-            }), 200
+            return jsonify({"message": "Coach added with updated teams"}), 200
         else:
-            # Create a new club with the coach
-            club_ref.set(
-                {
-                    "clubName": club_name,
-                    "clubNameLower": club_name.lower(),
-                    "coaches": [coach_email],
-                    "county": county,
-                    "ageGroups": age_groups,
-                    "divisions": divisions,
-                    "createdAt": fs.SERVER_TIMESTAMP,
-                }
-            )
+            # Create new club with initial teams
+            teams = [{"ageGroup": age_group, "division": division} for age_group in age_groups for division in divisions]
+            club_ref.set({
+                "clubName": club_name,
+                "clubNameLower": club_name.lower(),
+                "coaches": [coach_email],
+                "county": county,
+                "teams": teams,
+                "createdAt": fs.SERVER_TIMESTAMP,
+            })
             return jsonify({"message": "New club created"}), 201
 
-    except KeyError as e:
-        logging.error("Missing key in request data: %s", str(e))
-        return jsonify({"error": "Missing key in request data"}), 400
-    except ValueError as e:
-        logging.error("Invalid value: %s", str(e))
-        return jsonify({"error": "Invalid value"}), 400
     except Exception as e:
-        logging.error("An unexpected error occurred: %s", str(e))
-        return jsonify({"error": "An unexpected error occurred"}), 500
-
+        logging.error("Unexpected error: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/club/search", methods=["GET"])
 def search_clubs():
-    """
-    Search for clubs based on club name, county, age group, or division.
-    """
     try:
-        # Get query parameters
         club_name = request.args.get("clubName", "").strip().lower()
         county = request.args.get("county", "").strip()
         age_group = request.args.get("ageGroup", "").strip()
         division = request.args.get("division", "").strip()
 
-        # Start building the query
-        clubs_ref = db.collection("clubs")
-        queries = []
-
-        # Partial match for club name using range queries
+        query = db.collection("clubs")
         if club_name:
-            queries.append(("clubNameLower", ">=", club_name))
-            queries.append(("clubNameLower", "<", club_name + "\uf8ff"))
-
-        # Filter by county if provided
+            query = query.where("clubNameLower", ">=", club_name).where("clubNameLower", "<", club_name + "\uf8ff")
         if county:
-            queries.append(("county", "==", county))
+            query = query.where("county", "==", county)
 
-        # Filter by age group if provided
-        if age_group:
-            queries.append(("ageGroups", "array_contains", age_group))
+        clubs = []
+        for doc in query.stream():
+            club_data = doc.to_dict()
+            filtered_teams = [
+                team for team in club_data.get("teams", [])
+                if (not age_group or team["ageGroup"] == age_group) and (not division or team["division"] == division)
+            ]
 
-        # Filter by division if provided
-        if division:
-            queries.append(("divisions", "array_contains", division))
+            if filtered_teams:
+                clubs.append({
+                    "clubName": club_data["clubName"],
+                    "county": club_data["county"],
+                    "teams": filtered_teams
+                })
 
-        # Execute the query dynamically based on filters
-        if not queries:
-            # If no filters provided, return all clubs
-            club_docs = clubs_ref.stream()
-        else:
-            # Dynamically chain query conditions
-            query = clubs_ref
-            for field, op, value in queries:
-                query = query.where(field, op, value)
-            club_docs = query.stream()
-
-        # Return results as JSON
-        clubs = [doc.to_dict() for doc in club_docs]
         return jsonify(clubs), 200
 
     except Exception as e:
@@ -189,9 +156,6 @@ def search_clubs():
 
 @app.route("/club/join-request", methods=["POST"])
 def join_club_request():
-    """
-    Handle a player's request to join a club.
-    """
     try:
         data = request.json
         name = data.get("name")
@@ -203,28 +167,22 @@ def join_club_request():
         if not player_email or not club_name or not name or not age_group or not division:
             return jsonify({"error": "Name, player email, club name, age group, and division are required"}), 400
 
-        # Save the join request in Firestore
         join_requests_ref = db.collection("joinRequests")
-        join_requests_ref.add(
-            {
-                "name": name,
-                "playerEmail": player_email,
-                "clubName": club_name,
-                "ageGroup": age_group,
-                "division": division,
-                "status": "pending",
-                "requestedAt": fs.SERVER_TIMESTAMP,
-            }
-        )
+        join_requests_ref.add({
+            "name": name,
+            "playerEmail": player_email,
+            "clubName": club_name,
+            "ageGroup": age_group,
+            "division": division,
+            "status": "pending",
+            "requestedAt": fs.SERVER_TIMESTAMP,
+        })
 
         return jsonify({"message": "Join request submitted successfully"}), 201
 
-    except KeyError as e:
-        logging.error("Missing key in request data: %s", str(e))
-        return jsonify({"error": "Missing key in request data"}), 400
-    except ValueError as e:
-        logging.error("Invalid value: %s", str(e))
-        return jsonify({"error": "Invalid value"}), 400
+    except Exception as e:
+        logging.error("Unexpected error: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/club/requests", methods=["GET"])
