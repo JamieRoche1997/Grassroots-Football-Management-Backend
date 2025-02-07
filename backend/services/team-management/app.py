@@ -274,6 +274,38 @@ def reject_join_request():
     except Exception as e:
         logging.error("Error rejecting join request: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
+    
+
+@app.route("/club/players", methods=["GET"])
+def get_players():
+    """
+    Retrieve players associated with a club, age group, and division.
+    """
+    try:
+        club_name = request.args.get("clubName")
+        age_group = request.args.get("ageGroup")
+        division = request.args.get("division")
+
+        if not club_name or not age_group or not division:
+            return jsonify({"error": "Club name, age group, and division are required"}), 400
+
+        # Query users collection for players matching the criteria
+        users_ref = db.collection("users")
+        players_query = users_ref.where("role", "==", "player").stream()
+
+        # Filter based on club, ageGroup, and division from the user's document
+        players = [
+            player.to_dict() for player in players_query 
+            if player.get("clubName") == club_name 
+            and player.get("ageGroup") == age_group 
+            and player.get("division") == division
+        ]
+
+        return jsonify(players), 200
+
+    except Exception as e:
+        logger.error("Error retrieving players: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # Run the Flask app
