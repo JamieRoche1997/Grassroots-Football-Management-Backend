@@ -223,6 +223,8 @@ def approve_join_request():
         data = request.json
         player_email = data.get("playerEmail")
         club_name = data.get("clubName")
+        age_group = data.get("ageGroup")
+        division = data.get("division")
 
         if not player_email or not club_name:
             return jsonify({"error": "Player email and club name are required"}), 400
@@ -239,6 +241,9 @@ def approve_join_request():
         # Add player to club's players list
         club_ref = db.collection("clubs").document(club_name)
         club_ref.update({"players": fs.ArrayUnion([player_email])})
+
+        user_ref = db.collection("users").document(player_email)
+        user_ref.update({"clubName": club_name, "ageGroup": age_group, "division": division})
 
         return jsonify({"message": "Player added to the club"}), 200
 
