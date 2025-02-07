@@ -170,12 +170,11 @@ def join_club_request():
         name = data.get("name")
         player_email = data.get("playerEmail")
         club_name = data.get("clubName")
+        age_group = data.get("ageGroup")
+        division = data.get("division")
 
-        if not player_email or not club_name or name:
-            return (
-                jsonify({"error": "Name, player email and club name are required"}),
-                400,
-            )
+        if not player_email or not club_name or not name or not age_group or not division:
+            return jsonify({"error": "Name, player email, club name, age group, and division are required"}), 400
 
         # Save the join request in Firestore
         join_requests_ref = db.collection("joinRequests")
@@ -184,6 +183,8 @@ def join_club_request():
                 "name": name,
                 "playerEmail": player_email,
                 "clubName": club_name,
+                "ageGroup": age_group,
+                "division": division,
                 "status": "pending",
                 "requestedAt": fs.SERVER_TIMESTAMP,
             }
@@ -202,17 +203,22 @@ def join_club_request():
 @app.route("/club/requests", methods=["GET"])
 def get_join_requests():
     """
-    Retrieve pending join requests for a specific club.
+    Retrieve pending join requests for a specific club, age group, and division.
     """
     try:
         club_name = request.args.get("clubName")
-        if not club_name:
-            return jsonify({"error": "Club name is required"}), 400
+        age_group = request.args.get("ageGroup")
+        division = request.args.get("division")
 
-        # Query for pending requests for the club
+        if not club_name or not age_group or not division:
+            return jsonify({"error": "Club name, age group, and division are required"}), 400
+
+        # Query for pending requests for the club, age group, and division
         join_requests_ref = (
             db.collection("joinRequests")
             .where("clubName", "==", club_name)
+            .where("ageGroup", "==", age_group)
+            .where("division", "==", division)
             .where("status", "==", "pending")
         )
         requests = [req.to_dict() for req in join_requests_ref.stream()]
