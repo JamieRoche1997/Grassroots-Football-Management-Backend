@@ -175,10 +175,8 @@ def get_user_club_info():
         if user_doc.exists:
             user_data = user_doc.to_dict()
             return jsonify({"clubName": user_data.get("clubName"),
-                            "county": user_data.get("county"),
                             "ageGroup": user_data.get("ageGroup"),
                             "division": user_data.get("division"),
-                            "role": user_data.get("role")
                             }), 200
         else:
             return jsonify({"error": "User not found"}), 404
