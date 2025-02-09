@@ -60,18 +60,19 @@ db = firestore.client()
 @app.route('/schedule/matches', methods=['GET'])
 def get_matches():
     """
-    Retrieve matches for a specific month, age group, and division.
+    Retrieve matches for a specific month, age group, division, and county.
     """
     try:
         month = request.args.get('month')  # Format: yyyy-MM
         age_group = request.args.get('ageGroup')
         division = request.args.get('division')
+        county = request.args.get('county')  # Include county filter
 
-        if not month or not age_group or not division:
-            return jsonify({"error": "Month, age group, and division are required"}), 400
+        if not month or not age_group or not division or not county:
+            return jsonify({"error": "Month, age group, division, and county are required"}), 400
 
         matches_ref = db.collection('matches')
-        query = matches_ref.where('ageGroup', '==', age_group).where('division', '==', division)
+        query = matches_ref.where('ageGroup', '==', age_group).where('division', '==', division).where('county', '==', county)
 
         # Filter by month
         matches = [
@@ -100,6 +101,7 @@ def add_fixture():
             "awayTeam": data['awayTeam'],
             "ageGroup": data['ageGroup'],
             "division": data['division'],
+            "county": data['county'],  
             "date": data['date'],
             "result": None,  # Result will be null initially
             "createdBy": data['createdBy']
@@ -139,6 +141,64 @@ def update_result():
         return jsonify({"error": f"Missing key: {str(e)}"}), 400
     except Exception as e:
         logging.error("Error updating match result: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+    
+
+@app.route('/schedule/trainings', methods=['GET'])
+def get_trainings():
+    """
+    Retrieve training sessions for a specific month, age group, division, and club.
+    """
+    try:
+        month = request.args.get('month')  # Format: yyyy-MM
+        age_group = request.args.get('ageGroup')
+        division = request.args.get('division')
+        club_name = request.args.get('clubName')  # Include club filter
+
+        if not month or not age_group or not division or not club_name:
+            return jsonify({"error": "Month, age group, division, and club name are required"}), 400
+
+        trainings_ref = db.collection('trainings')
+        query = trainings_ref.where('ageGroup', '==', age_group).where('division', '==', division).where('clubName', '==', club_name)
+
+        # Filter by month
+        trainings = [
+            training.to_dict()
+            for training in query.stream()
+            if training.to_dict()['date'].startswith(month)
+        ]
+
+        return jsonify(trainings), 200
+
+    except Exception as e:
+        logging.error("Error fetching trainings: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route('/schedule/add-training', methods=['POST'])
+def add_training():
+    """
+    Add a new training session to the schedule.
+    """
+    try:
+        data = request.json
+        training = {
+            "trainingId": str(uuid.uuid4()),
+            "ageGroup": data['ageGroup'],
+            "division": data['division'],
+            "clubName": data['clubName'],  # Add club name
+            "date": data['date'],
+            "location": data['location'],
+            "notes": data.get('notes', ''),
+            "createdBy": data['createdBy']
+        }
+        db.collection('trainings').document(training['trainingId']).set(training)
+        return jsonify({"message": "Training session added successfully"}), 201
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing key: {str(e)}"}), 400
+    except Exception as e:
+        logging.error("Error adding training session: %s", e)
         return jsonify({"error": "Internal server error"}), 500
 
 
