@@ -639,3 +639,110 @@ paths:
           description: Missing or invalid request data.
         '500':
           description: Internal server error.
+
+  /schedule/trainings:
+    get:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/trainings
+      summary: Retrieve scheduled training sessions
+      operationId: getScheduledTrainings
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      description: Retrieve scheduled training sessions for a specific month, age group, and division.
+      parameters:
+        - name: month
+          in: query
+          description: The month to fetch training sessions for (format yyyy-MM).
+          required: true
+          type: string
+        - name: ageGroup
+          in: query
+          description: The age group to filter training sessions by.
+          required: true
+          type: string
+        - name: division
+          in: query
+          description: The division to filter training sessions by.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of training sessions retrieved successfully.
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                trainingId:
+                  type: string
+                ageGroup:
+                  type: string
+                division:
+                  type: string
+                date:
+                  type: string
+                  format: date-time
+                location:
+                  type: string
+                notes:
+                  type: string
+                createdBy:
+                  type: string
+        '400':
+          description: Missing or invalid query parameters.
+        '500':
+          description: Internal server error.
+
+  /schedule/add-training:
+    post:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/add-training
+      summary: Add a new training session to the schedule
+      operationId: addTrainingSession
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      description: Add a new training session to the schedule with details such as age group, division, date, and location.
+      parameters:
+        - in: body
+          name: body
+          description: The details of the training session to be added.
+          required: true
+          schema:
+            type: object
+            required:
+              - ageGroup
+              - division
+              - date
+              - location
+              - createdBy
+            properties:
+              ageGroup:
+                type: string
+                description: The age group for the training session.
+              division:
+                type: string
+                description: The division for the training session.
+              date:
+                type: string
+                format: date-time
+                description: The scheduled date and time of the training session.
+              location:
+                type: string
+                description: The location where the training session will be held.
+              notes:
+                type: string
+                description: Any additional notes about the training session.
+              createdBy:
+                type: string
+                description: The email of the user creating the training session.
+      responses:
+        '201':
+          description: Training session added successfully.
+        '400':
+          description: Missing or invalid request data.
+        '500':
+          description: Internal server error.
