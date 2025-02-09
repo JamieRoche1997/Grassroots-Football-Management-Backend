@@ -1,0 +1,150 @@
+import json
+import logging
+import os
+import uuid
+from flask import Flask, request, jsonify
+from firebase_admin import credentials, initialize_app, firestore
+from google.cloud import secretmanager
+from flask_cors import CORS
+
+# Initialise Flask app
+app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+
+def load_service_account_secret():
+    """
+    Load the Firebase service account credentials from Google Secret Manager.
+    """
+    try:
+        client = secretmanager.SecretManagerServiceClient()
+
+        project_id = "grassroots-football-management"
+        secret_name = "firebase-service-account"
+        secret_version = "latest"
+
+        # Build the resource name of the secret version
+        secret_path = (
+            f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
+        )
+
+        # Access the secret version
+        response = client.access_secret_version(request={"name": secret_path})
+        service_account_info = response.payload.data.decode("UTF-8")
+
+        # Convert JSON string to a Python dictionary
+        return json.loads(service_account_info)
+    except Exception as e:
+        logger.error("Error loading service account secret: %s", str(e))
+        raise RuntimeError(f"Failed to load service account secret: {str(e)}") from e
+
+
+# Initialise Firebase Admin with secret-loaded credentials
+try:
+    service_account_info = load_service_account_secret()
+    cred = credentials.Certificate(service_account_info)
+    initialize_app(cred)
+    logger.debug("Firebase Admin initialised successfully")
+except Exception as e:
+    logger.error("Failed to initialise Firebase Admin: %s", str(e))
+    raise
+
+# Initialise Firestore
+db = firestore.client()
+
+
+@app.route('/schedule/matches', methods=['GET'])
+def get_matches():
+    """
+    Retrieve matches for a specific month, age group, and division.
+    """
+    try:
+        month = request.args.get('month')  # Format: yyyy-MM
+        age_group = request.args.get('ageGroup')
+        division = request.args.get('division')
+
+        if not month or not age_group or not division:
+            return jsonify({"error": "Month, age group, and division are required"}), 400
+
+        matches_ref = db.collection('matches')
+        query = matches_ref.where('ageGroup', '==', age_group).where('division', '==', division)
+
+        # Filter by month
+        matches = [
+            match.to_dict()
+            for match in query.stream()
+            if match.to_dict()['date'].startswith(month)
+        ]
+
+        return jsonify(matches), 200
+
+    except Exception as e:
+        logging.error("Error fetching matches: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route('/schedule/add-fixture', methods=['POST'])
+def add_fixture():
+    """
+    Add a new fixture to the schedule.
+    """
+    try:
+        data = request.json
+        fixture = {
+            "matchId": str(uuid.uuid4()),
+            "homeTeam": data['homeTeam'],
+            "awayTeam": data['awayTeam'],
+            "ageGroup": data['ageGroup'],
+            "division": data['division'],
+            "date": data['date'],
+            "result": None,  # Result will be null initially
+            "createdBy": data['createdBy']
+        }
+        db.collection('matches').document(fixture['matchId']).set(fixture)
+        return jsonify({"message": "Fixture added successfully"}), 201
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing key: {str(e)}"}), 400
+    except Exception as e:
+        logging.error("Error adding fixture: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route('/schedule/update-result', methods=['PUT'])
+def update_result():
+    """
+    Update the result of a match fixture.
+    """
+    try:
+        data = request.json
+        match_id = data['matchId']
+        home_score = data['homeScore']
+        away_score = data['awayScore']
+
+        match_ref = db.collection('matches').document(match_id)
+        match_ref.update({
+            "result": {
+                "homeScore": home_score,
+                "awayScore": away_score
+            }
+        })
+
+        return jsonify({"message": "Match result updated successfully"}), 200
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing key: {str(e)}"}), 400
+    except Exception as e:
+        logging.error("Error updating match result: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+if __name__ == "__main__":
+    port = int(
+        os.environ.get("PORT", 8083)
+    )  # Use PORT environment variable or default to 8083
+    logger.info("Starting app on port %d", port)
+    app.run(host="0.0.0.0", port=port)

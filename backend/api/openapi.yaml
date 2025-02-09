@@ -485,3 +485,157 @@ paths:
           description: Missing or invalid query parameters
         '500':
           description: Internal server error
+
+  # Schedule Management Microservice Routes
+  /schedule/matches:
+    get:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/matches
+      summary: Retrieve scheduled matches
+      operationId: getScheduledMatches
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      description: Retrieve scheduled matches for a specific month, age group, and division.
+      parameters:
+        - name: month
+          in: query
+          description: The month to fetch matches for (format: yyyy-MM).
+          required: true
+          type: string
+        - name: ageGroup
+          in: query
+          description: The age group to filter matches by.
+          required: true
+          type: string
+        - name: division
+          in: query
+          description: The division to filter matches by.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of matches retrieved successfully.
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                matchId:
+                  type: string
+                homeTeam:
+                  type: string
+                awayTeam:
+                  type: string
+                ageGroup:
+                  type: string
+                division:
+                  type: string
+                date:
+                  type: string
+                  format: date-time
+                result:
+                  type: object
+                  properties:
+                    homeScore:
+                      type: integer
+                    awayScore:
+                      type: integer
+        '400':
+          description: Missing or invalid query parameters.
+        '500':
+          description: Internal server error.
+
+  /schedule/add-fixture:
+    post:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/add-fixture
+      summary: Add a new fixture to the schedule.
+      operationId: addFixture
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      description: Add a new match fixture to the schedule with details such as teams, age group, and date.
+      parameters:
+        - in: body
+          name: body
+          description: The details of the fixture to be added.
+          required: true
+          schema:
+            type: object
+            required:
+              - homeTeam
+              - awayTeam
+              - ageGroup
+              - division
+              - date
+              - createdBy
+            properties:
+              homeTeam:
+                type: string
+                description: The name of the home team.
+              awayTeam:
+                type: string
+                description: The name of the away team.
+              ageGroup:
+                type: string
+                description: The age group for the match.
+              division:
+                type: string
+                description: The division for the match.
+              date:
+                type: string
+                format: date-time
+                description: The scheduled date and time of the match.
+              createdBy:
+                type: string
+                description: The email of the user creating the fixture.
+      responses:
+        '201':
+          description: Fixture added successfully.
+        '400':
+          description: Missing or invalid request data.
+        '500':
+          description: Internal server error.
+
+  /schedule/update-result:
+    put:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/update-result
+      summary: Update a match result.
+      operationId: updateMatchResult
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      description: Update the result of a scheduled match with scores for both teams.
+      parameters:
+        - in: body
+          name: body
+          description: The match result data to be updated.
+          required: true
+          schema:
+            type: object
+            required:
+              - matchId
+              - homeScore
+              - awayScore
+            properties:
+              matchId:
+                type: string
+                description: The unique ID of the match to be updated.
+              homeScore:
+                type: integer
+                description: The score for the home team.
+              awayScore:
+                type: integer
+                description: The score for the away team.
+      responses:
+        '200':
+          description: Match result updated successfully.
+        '400':
+          description: Missing or invalid request data.
+        '500':
+          description: Internal server error.
