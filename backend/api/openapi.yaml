@@ -501,7 +501,7 @@ paths:
       parameters:
         - name: month
           in: query
-          description: The month to fetch matches for (format: yyyy-MM).
+          description: The month to fetch matches for (format yyyy-MM).
           required: true
           type: string
         - name: ageGroup
