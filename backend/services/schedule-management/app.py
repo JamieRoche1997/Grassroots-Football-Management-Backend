@@ -60,19 +60,18 @@ db = firestore.client()
 @app.route('/schedule/matches', methods=['GET'])
 def get_matches():
     """
-    Retrieve matches for a specific month, age group, division, and county.
+    Retrieve matches for a specific month, age group, and division.
     """
     try:
         month = request.args.get('month')  # Format: yyyy-MM
         age_group = request.args.get('ageGroup')
         division = request.args.get('division')
-        county = request.args.get('county')  # Include county filter
 
-        if not month or not age_group or not division or not county:
-            return jsonify({"error": "Month, age group, division, and county are required"}), 400
+        if not month or not age_group or not division:
+            return jsonify({"error": "Month, age group, and division are required"}), 400
 
         matches_ref = db.collection('matches')
-        query = matches_ref.where('ageGroup', '==', age_group).where('division', '==', division).where('county', '==', county)
+        query = matches_ref.where('ageGroup', '==', age_group).where('division', '==', division)
 
         # Filter by month
         matches = [
@@ -101,7 +100,6 @@ def add_fixture():
             "awayTeam": data['awayTeam'],
             "ageGroup": data['ageGroup'],
             "division": data['division'],
-            "county": data['county'],  
             "date": data['date'],
             "result": None,  # Result will be null initially
             "createdBy": data['createdBy']
@@ -147,19 +145,18 @@ def update_result():
 @app.route('/schedule/trainings', methods=['GET'])
 def get_trainings():
     """
-    Retrieve training sessions for a specific month, age group, division, and club.
+    Retrieve training sessions for a specific month, age group, and division.
     """
     try:
         month = request.args.get('month')  # Format: yyyy-MM
         age_group = request.args.get('ageGroup')
         division = request.args.get('division')
-        club_name = request.args.get('clubName')  # Include club filter
 
-        if not month or not age_group or not division or not club_name:
-            return jsonify({"error": "Month, age group, division, and club name are required"}), 400
+        if not month or not age_group or not division:
+            return jsonify({"error": "Month, age group, and division are required"}), 400
 
         trainings_ref = db.collection('trainings')
-        query = trainings_ref.where('ageGroup', '==', age_group).where('division', '==', division).where('clubName', '==', club_name)
+        query = trainings_ref.where('ageGroup', '==', age_group).where('division', '==', division)
 
         # Filter by month
         trainings = [
@@ -186,7 +183,6 @@ def add_training():
             "trainingId": str(uuid.uuid4()),
             "ageGroup": data['ageGroup'],
             "division": data['division'],
-            "clubName": data['clubName'],  # Add club name
             "date": data['date'],
             "location": data['location'],
             "notes": data.get('notes', ''),
@@ -200,6 +196,7 @@ def add_training():
     except Exception as e:
         logging.error("Error adding training session: %s", e)
         return jsonify({"error": "Internal server error"}), 500
+
 
 
 if __name__ == "__main__":
