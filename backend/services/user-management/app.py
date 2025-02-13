@@ -66,6 +66,9 @@ def create_firestore_user(user_data):
                 "name": user_data["name"],
                 "email": user_data["email"],
                 "role": user_data["role"],
+                "clubName": "",
+                "ageGroup": "",
+                "division": "",
             }
         )
     except Exception as e:
@@ -174,10 +177,16 @@ def get_user_club_info():
 
         if user_doc.exists:
             user_data = user_doc.to_dict()
-            return jsonify({"clubName": user_data.get("clubName"),
-                            "ageGroup": user_data.get("ageGroup"),
-                            "division": user_data.get("division"),
-                            }), 200
+            return (
+                jsonify(
+                    {
+                        "clubName": user_data.get("clubName"),
+                        "ageGroup": user_data.get("ageGroup"),
+                        "division": user_data.get("division"),
+                    }
+                ),
+                200,
+            )
         else:
             return jsonify({"error": "User not found"}), 404
 

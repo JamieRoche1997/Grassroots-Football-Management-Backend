@@ -486,6 +486,51 @@ paths:
         '500':
           description: Internal server error
 
+
+  /club/players/remove:
+    post:
+      x-google-backend:
+        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/players/remove
+      summary: Remove players from a club's roster
+      operationId: removePlayers
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: JSON object containing club details and player emails to remove
+          required: true
+          schema:
+            type: object
+            properties:
+              clubName:
+                type: string
+                description: The name of the club
+                example: "Cobh Ramblers"
+              ageGroup:
+                type: string
+                description: The age group of the players
+                example: "Professional"
+              division:
+                type: string
+                description: The division of the players
+                example: "Division Premier"
+              playerEmails:
+                type: array
+                items:
+                  type: string
+                description: List of player emails to remove from the club
+                example: ["player1@email.com", "player2@email.com"]
+      responses:
+        '200':
+          description: Players removed successfully
+        '400':
+          description: Missing or invalid parameters
+        '500':
+          description: Internal server error
+
   # Schedule Management Microservice Routes
   /schedule/matches:
     get:
