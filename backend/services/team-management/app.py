@@ -331,16 +331,16 @@ def get_players():
 
         # Query users collection for players matching the criteria
         users_ref = db.collection("users")
-        players_query = users_ref.where("role", "==", "player").stream()
+        players_query = (
+            users_ref.where("role", "==", "player")
+            .where("clubName", "==", club_name)
+            .where("ageGroup", "==", age_group)
+            .where("division", "==", division)
+            .stream()
+        )
 
-        # Filter based on club, ageGroup, and division, ensuring missing values are handled safely
-        players = [
-            player.to_dict()
-            for player in players_query
-            if player.get("clubName", None) == club_name
-            and player.get("ageGroup", None) == age_group
-            and player.get("division", None) == division
-        ]
+       # Convert query results to a list of dictionaries
+        players = [player.to_dict() for player in players_query]
 
         return jsonify(players), 200
 
