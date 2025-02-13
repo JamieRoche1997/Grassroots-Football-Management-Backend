@@ -183,6 +183,7 @@ def get_user_club_info():
                         "clubName": user_data.get("clubName"),
                         "ageGroup": user_data.get("ageGroup"),
                         "division": user_data.get("division"),
+                        "role": user_data.get("role"),
                     }
                 ),
                 200,

@@ -4,7 +4,7 @@ import os
 import uuid
 from flask import Flask, request, jsonify
 from firebase_admin import credentials, initialize_app, firestore
-from google.cloud import secretmanager
+from google.cloud import firestore as fs, secretmanager
 from flask_cors import CORS
 
 # Initialise Flask app
@@ -64,6 +64,7 @@ def get_matches():
     """
     try:
         month = request.args.get('month')  # Format: yyyy-MM
+        club_name = request.args.get('clubName')
         age_group = request.args.get('ageGroup')
         division = request.args.get('division')
 
@@ -77,7 +78,8 @@ def get_matches():
         matches = [
             match.to_dict()
             for match in query.stream()
-            if match.to_dict()['date'].startswith(month)
+            if match.to_dict()['date'].startswith(month) and
+               (match.to_dict().get('homeTeam') == club_name or match.to_dict().get('awayTeam') == club_name)
         ]
 
         return jsonify(matches), 200
@@ -149,6 +151,7 @@ def get_trainings():
     """
     try:
         month = request.args.get('month')  # Format: yyyy-MM
+        club_name = request.args.get('clubName')
         age_group = request.args.get('ageGroup')
         division = request.args.get('division')
 
@@ -162,7 +165,8 @@ def get_trainings():
         trainings = [
             training.to_dict()
             for training in query.stream()
-            if training.to_dict()['date'].startswith(month)
+            if training.to_dict()['date'].startswith(month) and
+               (training.to_dict().get('homeTeam') == club_name or training.to_dict().get('awayTeam') == club_name)
         ]
 
         return jsonify(trainings), 200
@@ -195,6 +199,38 @@ def add_training():
         return jsonify({"error": f"Missing key: {str(e)}"}), 400
     except Exception as e:
         logging.error("Error adding training session: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route('/schedule/save-tactics', methods=['POST'])
+def save_tactics():
+    """
+    Save or update tactics for a specific match.
+    """
+    try:
+        data = request.json
+        match_id = data.get('matchId')
+        formation = data.get('formation')
+        assigned_players = data.get('assignedPlayers')
+        strategy_notes = data.get('strategyNotes')
+
+        if not match_id or not formation or not assigned_players:
+            return jsonify({"error": "matchId, formation, and assignedPlayers are required"}), 400
+
+        tactics_data = {
+            "matchId": match_id,
+            "formation": formation,
+            "assignedPlayers": assigned_players,
+            "strategyNotes": strategy_notes,
+            "createdAt": fs.SERVER_TIMESTAMP,
+        }
+
+        db.collection('tactics').document(match_id).set(tactics_data)
+
+        return jsonify({"message": "Tactics saved successfully"}), 201
+
+    except Exception as e:
+        logging.error("Error saving tactics: %s", e)
         return jsonify({"error": "Internal server error"}), 500
 
 

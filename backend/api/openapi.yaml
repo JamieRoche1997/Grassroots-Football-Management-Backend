@@ -549,6 +549,11 @@ paths:
           description: The month to fetch matches for (format yyyy-MM).
           required: true
           type: string
+        - name: clubName
+          in: query
+          description: The club name to filter matches by.
+          required: true
+          type: string
         - name: ageGroup
           in: query
           description: The age group to filter matches by.
@@ -700,6 +705,11 @@ paths:
         - name: month
           in: query
           description: The month to fetch training sessions for (format yyyy-MM).
+          required: true
+          type: string
+        - name: clubName
+          in: query
+          description: The club name to filter training sessions by.
           required: true
           type: string
         - name: ageGroup
