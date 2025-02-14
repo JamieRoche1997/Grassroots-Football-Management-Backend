@@ -36,8 +36,6 @@ paths:
                 type: string
               name:
                 type: string
-              role:
-                type: string
       responses:
         '201':
           description: User registered successfully
@@ -51,7 +49,7 @@ paths:
       x-google-backend:
         address: https://microservice-authentication-180320540339.europe-west2.run.app/signin  
       summary: Sign in a user
-      description: Authenticate a user with an ID token
+      description: Authenticate a user with an ID token and return user role
       operationId: signInUser
       consumes:
         - application/json
@@ -70,6 +68,51 @@ paths:
       responses:
         '200':
           description: User signed in successfully
+          schema:
+            type: object
+            properties:
+              firebase_uid:
+                type: string
+              email:
+                type: string
+              role:
+                type: string
+        '400':
+          description: Invalid input
+        '401':
+          description: Invalid or expired ID token
+        '500':
+          description: Internal server error
+
+  /refresh-token:
+    post:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app/refresh-token  
+      summary: Refresh user authentication token
+      description: Allows a user to refresh their authentication token without signing in again
+      operationId: refreshToken
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: User refresh token data
+          required: true
+          schema:
+            type: object
+            properties:
+              idToken:
+                type: string
+      responses:
+        '200':
+          description: Token refreshed successfully
+          schema:
+            type: object
+            properties:
+              newToken:
+                type: string
         '400':
           description: Invalid input
         '401':
@@ -79,6 +122,63 @@ paths:
 
   /logout:
     post:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app/logout  
+      summary: Log out a user
+      description: Revoke a user's refresh tokens
+      operationId: logoutUser
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: User logout data
+          required: true
+          schema:
+            type: object
+            properties:
+              idToken:
+                type: string
+      responses:
+        '200':
+          description: User logged out successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Invalid or expired ID token
+        '500':
+          description: Internal server error
+
+  /password-reset:
+    post:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app/password-reset  
+      summary: Request password reset email
+      description: Sends a password reset email to the user
+      operationId: resetPassword
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: User email for password reset
+          required: true
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+      responses:
+        '200':
+          description: Password reset email sent successfully
+        '400':
+          description: Invalid email address
+        '500':
+          description: Internal server error
       x-google-backend:
         address: https://microservice-authentication-180320540339.europe-west2.run.app/logout 
       summary: Log out a user
@@ -151,6 +251,7 @@ paths:
           description: Invalid input or user already exists
         '500':
           description: Internal server error
+  
   /user/update:
     post:
       x-google-backend:
@@ -493,7 +594,6 @@ paths:
           description: Missing or invalid query parameters
         '500':
           description: Internal server error
-
 
   /club/players/remove:
     post:
