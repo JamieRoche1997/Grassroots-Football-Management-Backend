@@ -159,14 +159,13 @@ def get_trainings():
             return jsonify({"error": "Month, age group, and division are required"}), 400
 
         trainings_ref = db.collection('trainings')
-        query = trainings_ref.where('ageGroup', '==', age_group).where('division', '==', division)
+        query = trainings_ref.where('clubName', '==', club_name).where('ageGroup', '==', age_group).where('division', '==', division)
 
         # Filter by month
         trainings = [
             training.to_dict()
             for training in query.stream()
-            if training.to_dict()['date'].startswith(month) and
-               (training.to_dict().get('homeTeam') == club_name or training.to_dict().get('awayTeam') == club_name)
+            if training.to_dict()['date'].startswith(month)
         ]
 
         return jsonify(trainings), 200
