@@ -14,7 +14,7 @@ paths:
   /signup:
     post:
       x-google-backend:
-        address: https://microservice-authentication-180320540339.europe-west2.run.app/signup  
+        address: https://auth-service-180320540339.europe-west2.run.app/signup  
       summary: Register a new user
       description: Register a new user with email, password, and name
       operationId: registerUser
@@ -47,7 +47,7 @@ paths:
   /signin:
     post:
       x-google-backend:
-        address: https://microservice-authentication-180320540339.europe-west2.run.app/signin  
+        address: https://auth-service-180320540339.europe-west2.run.app/signin  
       summary: Sign in a user
       description: Authenticate a user with an ID token and return user role
       operationId: signInUser
@@ -87,7 +87,7 @@ paths:
   /refresh-token:
     post:
       x-google-backend:
-        address: https://microservice-authentication-180320540339.europe-west2.run.app/refresh-token  
+        address: https://auth-service-180320540339.europe-west2.run.app/refresh-token  
       summary: Refresh user authentication token
       description: Allows a user to refresh their authentication token without signing in again
       operationId: refreshToken
@@ -123,7 +123,7 @@ paths:
   /logout:
     post:
       x-google-backend:
-        address: https://microservice-authentication-180320540339.europe-west2.run.app/logout  
+        address: https://auth-service-180320540339.europe-west2.run.app/logout  
       summary: Log out a user
       description: Revoke a user's refresh tokens
       operationId: logoutUser
@@ -154,7 +154,7 @@ paths:
   /password-reset:
     post:
       x-google-backend:
-        address: https://microservice-authentication-180320540339.europe-west2.run.app/password-reset  
+        address: https://auth-service-180320540339.europe-west2.run.app/password-reset  
       summary: Request password reset email
       description: Sends a password reset email to the user
       operationId: resetPassword
@@ -179,40 +179,12 @@ paths:
           description: Invalid email address
         '500':
           description: Internal server error
-      x-google-backend:
-        address: https://microservice-authentication-180320540339.europe-west2.run.app/logout 
-      summary: Log out a user
-      description: Revoke a user's refresh tokens
-      operationId: logoutUser
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          description: User logout data
-          required: true
-          schema:
-            type: object
-            properties:
-              idToken:
-                type: string
-      responses:
-        '200':
-          description: User logged out successfully
-        '400':
-          description: Invalid input
-        '401':
-          description: Invalid or expired ID token
-        '500':
-          description: Internal server error
 
   # User Management Microservice Routes
   /user/create:
     post:
       x-google-backend:
-        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/create
+        address: https://user-service-180320540339.europe-west2.run.app/user/create
       summary: Create a new user in Firestore
       description: Create a new user document in Firestore with email, name, and role
       operationId: createUser
@@ -255,7 +227,7 @@ paths:
   /user/update:
     post:
       x-google-backend:
-        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/update  
+        address: https://user-service-180320540339.europe-west2.run.app/user/update  
       summary: Update a user's profile
       description: Update a user's profile in Firestore
       operationId: updateUserProfile
@@ -286,7 +258,7 @@ paths:
   /user/check:
     get:
       x-google-backend:
-        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/check  
+        address: https://user-service-180320540339.europe-west2.run.app/user/check  
       summary: Check if a user exists
       description: Check if a user exists in Firestore by email
       operationId: checkUserExists
@@ -316,7 +288,7 @@ paths:
   /user/club-info:
     get:
       x-google-backend:
-        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/club-info 
+        address: https://user-service-180320540339.europe-west2.run.app/user/club-info 
       summary: Retrieve user's club information
       description: Retrieve the club information of a user in Firestore by email
       operationId: getUserClubInfo
@@ -349,7 +321,7 @@ paths:
   /club/create-join:
     post:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/create-join
+        address: https://team-service-180320540339.europe-west2.run.app/club/create-join
       summary: Create or join a club
       operationId: createOrJoinClub
       consumes:
@@ -390,7 +362,7 @@ paths:
   /club/search:
     get:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/search
+        address: https://team-service-180320540339.europe-west2.run.app/club/search
       summary: Search for clubs
       operationId: searchClubs
       produces:
@@ -425,7 +397,7 @@ paths:
   /club/join-request:
     post:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/join-request
+        address: https://team-service-180320540339.europe-west2.run.app/club/join-request
       summary: Submit a join request
       operationId: submitJoinRequest
       consumes:
@@ -460,7 +432,7 @@ paths:
   /club/requests:
     get:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/requests
+        address: https://team-service-180320540339.europe-west2.run.app/club/requests
       summary: Retrieve pending join requests
       operationId: getJoinRequests
       produces:
@@ -492,7 +464,7 @@ paths:
   /club/requests/approve:
     post:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/requests/approve
+        address: https://team-service-180320540339.europe-west2.run.app/club/requests/approve
       summary: Approve a player's join request
       operationId: approveJoinRequest
       consumes:
@@ -529,7 +501,7 @@ paths:
   /club/requests/reject:
     post:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/requests/reject
+        address: https://team-service-180320540339.europe-west2.run.app/club/requests/reject
       summary: Reject a player's join request
       operationId: rejectJoinRequest
       consumes:
@@ -566,7 +538,7 @@ paths:
   /club/players:
     get:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/players
+        address: https://team-service-180320540339.europe-west2.run.app/club/players
       summary: Retrieve players for a specific club, age group, and division
       operationId: getPlayers
       produces:
@@ -598,7 +570,7 @@ paths:
   /club/players/remove:
     post:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/players/remove
+        address: https://team-service-180320540339.europe-west2.run.app/club/players/remove
       summary: Remove players from a club's roster
       operationId: removePlayers
       consumes:
@@ -643,7 +615,7 @@ paths:
   /schedule/matches:
     get:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/matches
+        address: https://schedule-service-180320540339.europe-west2.run.app/schedule/matches
       summary: Retrieve scheduled matches
       operationId: getScheduledMatches
       consumes:
@@ -708,7 +680,7 @@ paths:
   /schedule/add-fixture:
     post:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/add-fixture
+        address: https://schedule-service-180320540339.europe-west2.run.app/schedule/add-fixture
       summary: Add a new fixture to the schedule.
       operationId: addFixture
       consumes:
@@ -761,7 +733,7 @@ paths:
   /schedule/update-result:
     put:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/update-result
+        address: https://schedule-service-180320540339.europe-west2.run.app/schedule/update-result
       summary: Update a match result.
       operationId: updateMatchResult
       consumes:
@@ -801,7 +773,7 @@ paths:
   /schedule/trainings:
     get:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/trainings
+        address: https://schedule-service-180320540339.europe-west2.run.app/schedule/trainings
       summary: Retrieve scheduled training sessions
       operationId: getScheduledTrainings
       consumes:
@@ -861,7 +833,7 @@ paths:
   /schedule/add-training:
     post:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/add-training
+        address: https://schedule-service-180320540339.europe-west2.run.app/schedule/add-training
       summary: Add a new training session to the schedule
       operationId: addTrainingSession
       consumes:
