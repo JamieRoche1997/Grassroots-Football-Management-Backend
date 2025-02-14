@@ -136,6 +136,14 @@ paths:
                 type: string
               role:
                 type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              userRegistered:
+                type: boolean
       responses:
         '201':
           description: User created successfully

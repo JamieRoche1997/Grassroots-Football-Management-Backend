@@ -66,9 +66,10 @@ def create_firestore_user(user_data):
                 "name": user_data["name"],
                 "email": user_data["email"],
                 "role": user_data["role"],
-                "clubName": "",
-                "ageGroup": "",
-                "division": "",
+                "clubName": user_data.get("clubName", ""), 
+                "ageGroup": user_data.get("ageGroup", ""), 
+                "division": user_data.get("division", ""),  
+                "userRegistered": user_data.get("userRegistered", False),
             }
         )
     except Exception as e:
@@ -83,7 +84,11 @@ def create_user_profile():
         uid = data["uid"]
         email = data["email"]
         name = data["name"]
-        role = data.get("role", "player")  # Default role is 'player'
+        role = data.get("role", "player")
+        club_name = data.get("clubName", "")
+        age_group = data.get("ageGroup", "")
+        division = data.get("division", "")
+        userRegistered = data.get("userRegistered", False)
 
         # Store user information in Firestore
         user_data = {
@@ -91,6 +96,10 @@ def create_user_profile():
             "name": name,
             "email": email,
             "role": role,
+            "clubName": club_name,
+            "ageGroup": age_group,
+            "division": division,
+            "userRegistered": userRegistered,
         }
         create_firestore_user(user_data)
 
