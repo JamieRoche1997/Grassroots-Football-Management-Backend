@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ['auth-service', 'user-service', 'team-service', 'schedule-service']
+        service: ['authentication', 'user-management', 'team-management', 'schedule-management']
 
     steps:
       - name: Checkout code
@@ -27,12 +27,12 @@ jobs:
       - name: Build and push Docker image
         run: |
           cd backend/services/${{ matrix.service }}
-          gcloud builds submit --tag gcr.io/grassroots-football-management/${{ matrix.service }} 
+          gcloud builds submit --tag gcr.io/grassroots-football-management/microservice-${{ matrix.service }} 
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy ${{ matrix.service }} \
-            --image gcr.io/grassroots-football-management/${{ matrix.service }} \
+          gcloud run deploy microservice-${{ matrix.service }} \
+            --image gcr.io/grassroots-football-management/microservice-${{ matrix.service }} \
             --platform managed \
             --region europe-west2 \
             --allow-unauthenticated
