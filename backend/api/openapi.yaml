@@ -782,7 +782,7 @@ paths:
   /schedule/save-tactics:
     post:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/save-tactics
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/save-match-data
       summary: Save or update tactics for a match
       description: Save or update tactics, formation, strategy notes, and team lineups in the matches collection.
       operationId: saveMatchTactics
