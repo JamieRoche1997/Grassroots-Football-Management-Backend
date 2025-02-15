@@ -201,37 +201,49 @@ def add_training():
         return jsonify({"error": "Internal server error"}), 500
 
 
-@app.route('/schedule/save-tactics', methods=['POST'])
+@app.route('/schedule/save-match-data', methods=['POST'])
 def save_tactics():
     """
-    Save or update tactics for a specific match.
+    Save or update tactics for a specific match in the matches collection.
     """
     try:
         data = request.json
         match_id = data.get('matchId')
         formation = data.get('formation')
-        assigned_players = data.get('assignedPlayers')
         strategy_notes = data.get('strategyNotes')
+        home_team_lineup = data.get('homeTeamLineup')
+        away_team_lineup = data.get('awayTeamLineup')
 
-        if not match_id or not formation or not assigned_players:
-            return jsonify({"error": "matchId, formation, and assignedPlayers are required"}), 400
+        if not match_id or not formation:
+            return jsonify({"error": "matchId and formation are required"}), 400
 
-        tactics_data = {
-            "matchId": match_id,
+        match_ref = db.collection('matches').document(match_id)
+        match = match_ref.get()
+
+        if not match.exists:
+            return jsonify({"error": "Match not found"}), 404
+
+        # Prepare the update data
+        tactics_update = {
             "formation": formation,
-            "assignedPlayers": assigned_players,
-            "strategyNotes": strategy_notes,
-            "createdAt": fs.SERVER_TIMESTAMP,
+            "strategyNotes": strategy_notes if strategy_notes else "",
+            "updatedAt": fs.SERVER_TIMESTAMP,
         }
 
-        db.collection('tactics').document(match_id).set(tactics_data)
+        # Only update lineups if they exist in the request
+        if home_team_lineup:
+            tactics_update["homeTeamLineup"] = home_team_lineup
+        if away_team_lineup:
+            tactics_update["awayTeamLineup"] = away_team_lineup
 
-        return jsonify({"message": "Tactics saved successfully"}), 201
+        # Update the match document in the matches collection
+        match_ref.update(tactics_update)
+
+        return jsonify({"message": "Tactics saved successfully"}), 200
 
     except Exception as e:
         logging.error("Error saving tactics: %s", e)
         return jsonify({"error": "Internal server error"}), 500
-
 
 
 if __name__ == "__main__":

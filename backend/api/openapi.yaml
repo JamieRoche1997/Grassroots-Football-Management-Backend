@@ -778,3 +778,88 @@ paths:
           description: Missing or invalid request data.
         '500':
           description: Internal server error.
+
+  /schedule/save-tactics:
+    post:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/save-tactics
+      summary: Save or update tactics for a match
+      description: Save or update tactics, formation, strategy notes, and team lineups in the matches collection.
+      operationId: saveMatchTactics
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Match tactics data to be saved
+          required: true
+          schema:
+            type: object
+            required:
+              - matchId
+              - formation
+            properties:
+              matchId:
+                type: string
+                description: The unique identifier for the match.
+              formation:
+                type: string
+                description: The team's selected formation.
+                example: "4-4-2"
+              strategyNotes:
+                type: string
+                description: Coach's strategic notes for the match.
+                example: "Play high press in the first half."
+              homeTeamLineup:
+                type: object
+                description: The lineup for the home team (position to player ID mapping).
+                additionalProperties:
+                  type: string
+                example:
+                  GK: "player_uid_1"
+                  RB: "player_uid_2"
+                  CB: "player_uid_3"
+              awayTeamLineup:
+                type: object
+                description: The lineup for the away team (position to player ID mapping).
+                additionalProperties:
+                  type: string
+                example:
+                  GK: "player_uid_4"
+                  LB: "player_uid_5"
+                  CB: "player_uid_6"
+      responses:
+        '200':
+          description: Tactics saved successfully.
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Tactics saved successfully"
+        '400':
+          description: Missing or invalid request data.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "matchId and formation are required"
+        '404':
+          description: Match not found.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Match not found"
+        '500':
+          description: Internal server error.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"
