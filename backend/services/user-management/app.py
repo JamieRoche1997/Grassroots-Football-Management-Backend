@@ -205,24 +205,18 @@ def get_user_club_info():
         return jsonify({"error": "Internal server error"}), 500
     
 
-@app.route('/users/update-match-event', methods=['POST'])
+@app.route('/user/update-match-event', methods=['POST'])
 def update_user_match_event():
     """
-    Append a match event to the player's document in Firestore.
+    Append a match event count to the player's document in Firestore.
     """
     try:
         data = request.json
-        player_name = data.get('playerName')
-        match_event = {
-            "type": data.get('type'),
-            "minute": data.get('minute'),
-            "description": data.get('description'),
-            "matchId": data.get('matchId'),
-            "timestamp": fs.SERVER_TIMESTAMP
-        }
+        player_name = data.get('playerEmail')
+        event_type = data.get('type')
 
-        if not player_name:
-            return jsonify({"error": "Player name is required"}), 400
+        if not player_name or not event_type:
+            return jsonify({"error": "playerEmail and type are required"}), 400
 
         user_ref = db.collection('users').document(player_name)
         user = user_ref.get()
@@ -230,11 +224,22 @@ def update_user_match_event():
         if not user.exists:
             return jsonify({"error": "Player not found"}), 404
 
-        user_ref.update({
-            "matchEvents": fs.ArrayUnion([match_event])
-        })
+        update_data = {}
 
-        return jsonify({"message": "Match event saved for player"}), 200
+        if event_type == "goal":
+            update_data["goals"] = fs.Increment(1)
+        elif event_type == "assist":
+            update_data["assists"] = fs.Increment(1)
+        elif event_type == "yellowCard":
+            update_data["yellowCards"] = fs.Increment(1)
+        elif event_type == "redCard":
+            update_data["redCards"] = fs.Increment(1)
+        elif event_type == "injury":
+            update_data["isInjured"] = True  # Flag player as injured
+
+        user_ref.update(update_data)
+
+        return jsonify({"message": f"{event_type} recorded successfully for player"}), 200
 
     except Exception as e:
         logging.error("Error updating user match event: %s", e)

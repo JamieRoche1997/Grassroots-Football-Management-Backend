@@ -214,11 +214,11 @@ paths:
         '500':
           description: Internal server error
 
-  /users/update-match-event:
+  /user/update-match-event:
     post:
       x-google-backend:
-        address: https://microservice-user-management-180320540339.europe-west2.run.app/users/update-match-event
-      summary: Append a match event to a player's document
+        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/update-match-event
+      summary: Append a match event count to a player's document
       operationId: updateUserMatchEvent
       consumes:
         - application/json
@@ -234,8 +234,6 @@ paths:
             required:
               - playerName
               - type
-              - minute
-              - matchId
             properties:
               playerName:
                 type: string
@@ -244,18 +242,9 @@ paths:
                 type: string
                 enum: [goal, assist, injury, yellowCard, redCard]
                 description: Type of match event
-              minute:
-                type: string
-                description: The match minute the event occurred
-              matchId:
-                type: string
-                description: The match identifier
-              description:
-                type: string
-                description: Additional details about the event
       responses:
         '200':
-          description: Match event saved for player
+          description: Match event recorded successfully
         '400':
           description: Missing or invalid request data
         '404':
