@@ -119,23 +119,38 @@ def add_fixture():
 @app.route('/schedule/update-result', methods=['PUT'])
 def update_result():
     """
-    Update the result of a match fixture.
+    Update the result and match events of a match fixture.
     """
     try:
         data = request.json
-        match_id = data['matchId']
-        home_score = data['homeScore']
-        away_score = data['awayScore']
+        match_id = data.get('matchId')
+        home_score = data.get('homeScore')
+        away_score = data.get('awayScore')
+        match_events = data.get('events', [])  # Default to an empty list if not provided
+
+        if not match_id or home_score is None or away_score is None:
+            return jsonify({"error": "matchId, homeScore, and awayScore are required"}), 400
 
         match_ref = db.collection('matches').document(match_id)
-        match_ref.update({
-            "result": {
-                "homeScore": home_score,
-                "awayScore": away_score
-            }
-        })
+        match = match_ref.get()
 
-        return jsonify({"message": "Match result updated successfully"}), 200
+        if not match.exists:
+            return jsonify({"error": "Match not found"}), 404
+
+        update_data = {
+            "homeScore": home_score,
+            "awayScore": away_score,
+            "updatedAt": fs.SERVER_TIMESTAMP
+        }
+
+        # Append new match events if provided
+        if match_events:
+            existing_events = match.to_dict().get("events", [])
+            update_data["events"] = existing_events + match_events  # Append new events
+
+        match_ref.update(update_data)
+
+        return jsonify({"message": "Match result and events updated successfully"}), 200
 
     except KeyError as e:
         return jsonify({"error": f"Missing key: {str(e)}"}), 400

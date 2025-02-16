@@ -4,7 +4,7 @@ import os
 from flask import Flask, request, jsonify
 from firebase_admin import credentials, firestore, initialize_app
 from flask_cors import CORS
-from google.cloud import secretmanager
+from google.cloud import firestore as fs, secretmanager
 
 # Initialise Flask app
 app = Flask(__name__)
@@ -203,6 +203,43 @@ def get_user_club_info():
     except Exception as e:
         logger.error("Unexpected error: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
+    
+
+@app.route('/users/update-match-event', methods=['POST'])
+def update_user_match_event():
+    """
+    Append a match event to the player's document in Firestore.
+    """
+    try:
+        data = request.json
+        player_name = data.get('playerName')
+        match_event = {
+            "type": data.get('type'),
+            "minute": data.get('minute'),
+            "description": data.get('description'),
+            "matchId": data.get('matchId'),
+            "timestamp": fs.SERVER_TIMESTAMP
+        }
+
+        if not player_name:
+            return jsonify({"error": "Player name is required"}), 400
+
+        user_ref = db.collection('users').document(player_name)
+        user = user_ref.get()
+
+        if not user.exists:
+            return jsonify({"error": "Player not found"}), 404
+
+        user_ref.update({
+            "matchEvents": fs.ArrayUnion([match_event])
+        })
+
+        return jsonify({"message": "Match event saved for player"}), 200
+
+    except Exception as e:
+        logging.error("Error updating user match event: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
 
 
 # Run the Flask app

@@ -214,6 +214,56 @@ paths:
         '500':
           description: Internal server error
 
+  /users/update-match-event:
+    post:
+      x-google-backend:
+        address: https://microservice-user-management-180320540339.europe-west2.run.app/users/update-match-event
+      summary: Append a match event to a player's document
+      operationId: updateUserMatchEvent
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Match event details
+          required: true
+          schema:
+            type: object
+            required:
+              - playerName
+              - type
+              - minute
+              - matchId
+            properties:
+              playerName:
+                type: string
+                description: The player's unique identifier
+              type:
+                type: string
+                enum: [goal, assist, injury, yellowCard, redCard]
+                description: Type of match event
+              minute:
+                type: string
+                description: The match minute the event occurred
+              matchId:
+                type: string
+                description: The match identifier
+              description:
+                type: string
+                description: Additional details about the event
+      responses:
+        '200':
+          description: Match event saved for player
+        '400':
+          description: Missing or invalid request data
+        '404':
+          description: Player not found
+        '500':
+          description: Internal server error
+
+
   # Team Management Microservice Routes
   /club/create-join:
     post:
@@ -627,21 +677,21 @@ paths:
         '500':
           description: Internal server error.
 
-  /schedule/update-result:
+    /schedule/update-result:
     put:
       x-google-backend:
         address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/update-result
-      summary: Update a match result.
+      summary: Update a match result and events.
       operationId: updateMatchResult
       consumes:
         - application/json
       produces:
         - application/json
-      description: Update the result of a scheduled match with scores for both teams.
+      description: Update the result of a scheduled match with scores and events.
       parameters:
         - in: body
           name: body
-          description: The match result data to be updated.
+          description: The match result and events data to be updated.
           required: true
           schema:
             type: object
@@ -659,13 +709,58 @@ paths:
               awayScore:
                 type: integer
                 description: The score for the away team.
+              events:
+                type: array
+                description: List of match events.
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum: [goal, assist, injury, yellowCard, redCard]
+                      description: The type of event.
+                    playerName:
+                      type: string
+                      description: The name of the player involved in the event.
+                    minute:
+                      type: string
+                      description: The minute the event occurred.
+                    description:
+                      type: string
+                      description: Additional event details.
       responses:
         '200':
-          description: Match result updated successfully.
+          description: Match result and events updated successfully.
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Match result and events updated successfully"
         '400':
           description: Missing or invalid request data.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "matchId, homeScore, and awayScore are required"
+        '404':
+          description: Match not found.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Match not found"
         '500':
           description: Internal server error.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"
 
   /schedule/trainings:
     get:
