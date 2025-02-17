@@ -954,8 +954,6 @@ paths:
       x-google-backend:
         address: https://microservice-player-ratings-180320540339.europe-west2.run.app/player/submit-rating
       summary: Submit a new player rating
-      description: Allows users to submit ratings for a player based on match performance.
-      operationId: submitPlayerRating
       consumes:
         - application/json
       produces:
@@ -972,71 +970,43 @@ paths:
               - matchId
               - ratedBy
               - overallPerformance
+              - passingAccuracy
+              - shootingAccuracy
+              - defensiveWorkRate
+              - attackingContributions
+              - teamwork
+              - skill
+              - attitude
             properties:
               playerEmail:
                 type: string
-                description: The email of the player being rated.
               matchId:
                 type: string
-                description: The match ID for which the rating is given.
               ratedBy:
                 type: string
-                description: The email of the user submitting the rating.
               overallPerformance:
                 type: integer
-                description: Overall player performance rating (1-10).
-                minimum: 1
-                maximum: 10
               passingAccuracy:
                 type: integer
-                description: Passing accuracy rating (1-10).
-                minimum: 1
-                maximum: 10
               shootingAccuracy:
                 type: integer
-                description: Shooting accuracy rating (1-10).
-                minimum: 1
-                maximum: 10
               defensiveWorkRate:
                 type: integer
-                description: Defensive work rate rating (1-10).
-                minimum: 1
-                maximum: 10
               attackingContributions:
                 type: integer
-                description: Attacking contributions rating (1-10).
-                minimum: 1
-                maximum: 10
               teamwork:
                 type: integer
-                description: Teamwork and leadership rating (1-10).
-                minimum: 1
-                maximum: 10
+              skill:  
+                type: integer
+              attitude:  
+                type: integer
       responses:
         '201':
           description: Player rating submitted successfully.
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Player rating submitted successfully"
         '400':
           description: Missing or invalid request data.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "playerEmail, matchId, and ratedBy are required"
         '500':
           description: Internal server error.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "Internal server error"
 
   /player/get-ratings:
     get:

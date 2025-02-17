@@ -78,14 +78,23 @@ def submit_player_rating():
             "attitude"  
         ]
 
-        if not player_email or not match_id or not rated_by:
-            return jsonify({"error": "playerEmail, matchId, and ratedBy are required"}), 400
+        # ✅ Validate required fields
+        missing_fields = [field for field in ["playerEmail", "matchId", "ratedBy"] if not data.get(field)]
+        if missing_fields:
+            return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
 
+        # ✅ Validate rating fields are within range
+        invalid_fields = [field for field in rating_fields if not isinstance(data.get(field, 0), int) or not (1 <= data[field] <= 10)]
+        if invalid_fields:
+            return jsonify({"error": f"Invalid rating values: {', '.join(invalid_fields)}. Ratings must be between 1 and 10."}), 400
+
+        # Construct rating object
         rating = {field: data.get(field, 0) for field in rating_fields}
         rating["matchId"] = match_id
         rating["date"] = fs.SERVER_TIMESTAMP
         rating["ratedBy"] = rated_by
 
+        # Check if player rating exists
         player_ref = db.collection("player_ratings").document(player_email)
         player_doc = player_ref.get()
 
@@ -95,9 +104,7 @@ def submit_player_rating():
             player_ratings.append(rating)
 
             total_votes = len(player_ratings)
-            avg_rating = round(
-                sum(r["overallPerformance"] for r in player_ratings) / total_votes, 1
-            )
+            avg_rating = round(sum(r["overallPerformance"] for r in player_ratings) / total_votes, 1)
 
             player_ref.update({
                 "ratings": player_ratings,
@@ -115,8 +122,8 @@ def submit_player_rating():
         return jsonify({"message": "Player rating submitted successfully"}), 201
 
     except Exception as e:
-        logging.error("Error submitting player rating: %s", e)
-        return jsonify({"error": "Internal server error"}), 500
+        logging.exception("Unexpected error submitting player rating: %s", e)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/player/get-ratings", methods=["GET"])
