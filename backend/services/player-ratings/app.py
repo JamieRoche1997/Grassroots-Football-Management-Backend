@@ -111,6 +111,10 @@ def submit_player_rating():
             avg_rating = round(sum(r["overallPerformance"] for r in player_ratings) / total_votes, 1)
 
             player_ref.update({
+                "playerName": player_name,
+                "clubName": club_name,
+                "ageGroup": age_group,
+                "division": division,
                 "ratings": player_ratings,
                 "averageRating": avg_rating,
                 "totalVotes": total_votes,
@@ -119,6 +123,10 @@ def submit_player_rating():
         else:
             player_ref.set({
                 "playerEmail": player_email,
+                "playerName": player_name,
+                "clubName": club_name,
+                "ageGroup": age_group,
+                "division": division,
                 "ratings": [rating],
                 "averageRating": rating["overallPerformance"],
                 "totalVotes": 1,
