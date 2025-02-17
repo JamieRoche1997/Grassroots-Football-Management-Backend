@@ -1084,3 +1084,166 @@ paths:
               error:
                 type: string
                 example: "Internal server error"
+
+  # Match Ratings Microservice Routes
+  /match/submit-rating:
+    post:
+      x-google-backend:
+        address: https://microservice-match-ratings-180320540339.europe-west2.run.app/match/submit-rating
+      summary: Submit a new match rating
+      description: Allows users to submit ratings for a match based on overall quality, refereeing, and atmosphere.
+      operationId: submitMatchRating
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Match rating data to be submitted.
+          required: true
+          schema:
+            type: object
+            required:
+              - matchId
+              - clubName
+              - ageGroup
+              - division
+              - ratedBy
+              - overallQuality
+              - refereeingPerformance
+              - homeTeamPerformance
+              - awayTeamPerformance
+              - sportsmanship
+              - crowdAtmosphere
+            properties:
+              matchId:
+                type: string
+                description: The match ID for which the rating is given.
+              clubName:
+                type: string
+                description: The club name associated with the match.
+              ageGroup:
+                type: string
+                description: The age group of the match.
+              division:
+                type: string
+                description: The division of the match.
+              ratedBy:
+                type: string
+                description: The email of the user submitting the rating.
+              overallQuality:
+                type: integer
+                description: Overall match quality rating (1-10).
+                minimum: 1
+                maximum: 10
+              refereeingPerformance:
+                type: integer
+                description: Referee performance rating (1-10).
+                minimum: 1
+                maximum: 10
+              homeTeamPerformance:
+                type: integer
+                description: Home team performance rating (1-10).
+                minimum: 1
+                maximum: 10
+              awayTeamPerformance:
+                type: integer
+                description: Away team performance rating (1-10).
+                minimum: 1
+                maximum: 10
+              sportsmanship:
+                type: integer
+                description: Sportsmanship rating (1-10).
+                minimum: 1
+                maximum: 10
+              crowdAtmosphere:
+                type: integer
+                description: Crowd atmosphere rating (1-10).
+                minimum: 1
+                maximum: 10
+      responses:
+        '201':
+          description: Match rating submitted successfully.
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Match rating submitted successfully"
+        '400':
+          description: Missing or invalid request data.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "matchId, ratedBy, and ratings are required"
+        '500':
+          description: Internal server error.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"
+
+  /match/get-ratings:
+    get:
+      x-google-backend:
+        address: https://microservice-match-ratings-180320540339.europe-west2.run.app/match/get-ratings
+      summary: Retrieve match ratings
+      description: Retrieves ratings for all matches in a given club, age group, and division.
+      operationId: getMatchRatings
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          description: The club name to filter match ratings by.
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          description: The age group to filter match ratings by.
+          required: true
+          type: string
+        - in: query
+          name: division
+          description: The division to filter match ratings by.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of match ratings retrieved successfully.
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                matchId:
+                  type: string
+                  description: The unique identifier of the match.
+                averageRating:
+                  type: number
+                  format: float
+                  description: The average match rating.
+                totalVotes:
+                  type: integer
+                  description: The total number of votes received.
+        '400':
+          description: Missing or invalid query parameters.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Missing clubName, ageGroup, or division"
+        '500':
+          description: Internal server error.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"
