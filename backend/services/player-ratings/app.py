@@ -66,6 +66,7 @@ def submit_player_rating():
         player_email = data.get("playerEmail")
         match_id = data.get("matchId")
         rated_by = data.get("ratedBy")
+
         rating_fields = [
             "overallPerformance",
             "passingAccuracy",
@@ -73,6 +74,8 @@ def submit_player_rating():
             "defensiveWorkRate",
             "attackingContributions",
             "teamwork",
+            "skill",  
+            "attitude"  
         ]
 
         if not player_email or not match_id or not rated_by:
