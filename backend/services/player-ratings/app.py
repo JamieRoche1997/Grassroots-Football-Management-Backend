@@ -63,6 +63,8 @@ def submit_player_rating():
     """
     try:
         data = request.json
+        logging.info("Received player rating data: %s", json.dumps(data, indent=4))
+
         player_email = data.get("playerEmail")
         match_id = data.get("matchId")
         rated_by = data.get("ratedBy")
@@ -74,27 +76,25 @@ def submit_player_rating():
             "defensiveWorkRate",
             "attackingContributions",
             "teamwork",
-            "skill",  
-            "attitude"  
+            "skill",
+            "attitude"
         ]
 
-        # ✅ Validate required fields
+        # Validate required fields
         missing_fields = [field for field in ["playerEmail", "matchId", "ratedBy"] if not data.get(field)]
         if missing_fields:
             return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
 
-        # ✅ Validate rating fields are within range
+        # Validate rating fields (ensure numbers between 1 and 10)
         invalid_fields = [field for field in rating_fields if not isinstance(data.get(field, 0), int) or not (1 <= data[field] <= 10)]
         if invalid_fields:
             return jsonify({"error": f"Invalid rating values: {', '.join(invalid_fields)}. Ratings must be between 1 and 10."}), 400
 
-        # Construct rating object
+        # ✅ Fix: Store the timestamp at the document level, not inside the rating object
         rating = {field: data.get(field, 0) for field in rating_fields}
         rating["matchId"] = match_id
-        rating["date"] = fs.SERVER_TIMESTAMP
         rating["ratedBy"] = rated_by
 
-        # Check if player rating exists
         player_ref = db.collection("player_ratings").document(player_email)
         player_doc = player_ref.get()
 
@@ -109,20 +109,22 @@ def submit_player_rating():
             player_ref.update({
                 "ratings": player_ratings,
                 "averageRating": avg_rating,
-                "totalVotes": total_votes
+                "totalVotes": total_votes,
+                "updatedAt": fs.SERVER_TIMESTAMP  
             })
         else:
             player_ref.set({
                 "playerEmail": player_email,
                 "ratings": [rating],
                 "averageRating": rating["overallPerformance"],
-                "totalVotes": 1
+                "totalVotes": 1,
+                "createdAt": fs.SERVER_TIMESTAMP  
             })
 
         return jsonify({"message": "Player rating submitted successfully"}), 201
 
     except Exception as e:
-        logging.exception("Unexpected error submitting player rating: %s", e)
+        logging.exception("Unexpected error submitting player rating")
         return jsonify({"error": str(e)}), 500
 
 
