@@ -66,6 +66,10 @@ def submit_player_rating():
         logging.info("Received player rating data: %s", json.dumps(data, indent=4))
 
         player_email = data.get("playerEmail")
+        player_name = data.get("playerName")
+        club_name = data.get("clubName")
+        age_group = data.get("ageGroup")
+        division = data.get("division")
         match_id = data.get("matchId")
         rated_by = data.get("ratedBy")
 
@@ -150,7 +154,6 @@ def get_player_ratings():
             players.append({
                 "playerEmail": player_data.get("playerEmail"),
                 "playerName": player_data.get("playerName"),
-                "position": player_data.get("position"),
                 "averageRating": player_data.get("averageRating", 0),
                 "totalVotes": player_data.get("totalVotes", 0),
             })

@@ -969,6 +969,10 @@ paths:
             type: object
             required:
               - playerEmail
+              - playerName
+              - clubName
+              - ageGroup
+              - division
               - matchId
               - ratedBy
               - overallPerformance
@@ -981,6 +985,14 @@ paths:
               - attitude
             properties:
               playerEmail:
+                type: string
+              playerName:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
                 type: string
               matchId:
                 type: string
@@ -1049,9 +1061,6 @@ paths:
                 playerName:
                   type: string
                   description: The name of the player.
-                position:
-                  type: string
-                  description: The player's position.
                 averageRating:
                   type: number
                   format: float
