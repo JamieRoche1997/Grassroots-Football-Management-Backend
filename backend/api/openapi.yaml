@@ -947,3 +947,159 @@ paths:
               error:
                 type: string
                 example: "Internal server error"
+
+  # Player Ratings Microservice Routes
+  /player/submit-rating:
+    post:
+      x-google-backend:
+        address: https://microservice-player-ratings-180320540339.europe-west2.run.app/player/submit-rating
+      summary: Submit a new player rating
+      description: Allows users to submit ratings for a player based on match performance.
+      operationId: submitPlayerRating
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Player rating data to be submitted.
+          required: true
+          schema:
+            type: object
+            required:
+              - playerEmail
+              - matchId
+              - ratedBy
+              - overallPerformance
+            properties:
+              playerEmail:
+                type: string
+                description: The email of the player being rated.
+              matchId:
+                type: string
+                description: The match ID for which the rating is given.
+              ratedBy:
+                type: string
+                description: The email of the user submitting the rating.
+              overallPerformance:
+                type: integer
+                description: Overall player performance rating (1-10).
+                minimum: 1
+                maximum: 10
+              passingAccuracy:
+                type: integer
+                description: Passing accuracy rating (1-10).
+                minimum: 1
+                maximum: 10
+              shootingAccuracy:
+                type: integer
+                description: Shooting accuracy rating (1-10).
+                minimum: 1
+                maximum: 10
+              defensiveWorkRate:
+                type: integer
+                description: Defensive work rate rating (1-10).
+                minimum: 1
+                maximum: 10
+              attackingContributions:
+                type: integer
+                description: Attacking contributions rating (1-10).
+                minimum: 1
+                maximum: 10
+              teamwork:
+                type: integer
+                description: Teamwork and leadership rating (1-10).
+                minimum: 1
+                maximum: 10
+      responses:
+        '201':
+          description: Player rating submitted successfully.
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Player rating submitted successfully"
+        '400':
+          description: Missing or invalid request data.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "playerEmail, matchId, and ratedBy are required"
+        '500':
+          description: Internal server error.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"
+
+  /player/get-ratings:
+    get:
+      x-google-backend:
+        address: https://microservice-player-ratings-180320540339.europe-west2.run.app/player/get-ratings
+      summary: Retrieve player ratings
+      description: Retrieves ratings for all players in a given club.
+      operationId: getPlayerRatings
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          description: The club name to filter player ratings by.
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          description: The age group to filter player ratings by.
+          required: true
+          type: string
+        - in: query
+          name: division
+          description: The division to filter player ratings by.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of player ratings retrieved successfully.
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                playerEmail:
+                  type: string
+                  description: The email of the player.
+                playerName:
+                  type: string
+                  description: The name of the player.
+                position:
+                  type: string
+                  description: The player's position.
+                averageRating:
+                  type: number
+                  format: float
+                  description: The player's average rating.
+                totalVotes:
+                  type: integer
+                  description: The total number of votes received.
+        '400':
+          description: Missing or invalid query parameters.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Missing clubName, ageGroup, or division"
+        '500':
+          description: Internal server error.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"
