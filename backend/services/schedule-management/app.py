@@ -146,7 +146,13 @@ def update_result():
         # Append new match events if provided
         if match_events:
             existing_events = match.to_dict().get("events", [])
-            update_data["events"] = existing_events + match_events  # Append new events
+
+            # Ensure only unique events are stored
+            all_events = existing_events + match_events
+            unique_events = {f"{e['playerEmail']}_{e['minute']}_{e['type']}": e for e in all_events}.values()
+            
+            update_data["events"] = list(unique_events)  # ✅ Replaces instead of appending duplicates
+
 
         match_ref.update(update_data)
 

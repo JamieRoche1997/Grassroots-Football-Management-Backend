@@ -66,6 +66,7 @@ def create_firestore_user(user_data):
                 "name": user_data["name"],
                 "email": user_data["email"],
                 "role": user_data["role"],
+                "position": user_data.get("position", ""),
                 "clubName": user_data.get("clubName", ""), 
                 "ageGroup": user_data.get("ageGroup", ""), 
                 "division": user_data.get("division", ""),  
@@ -85,6 +86,7 @@ def create_user_profile():
         email = data["email"]
         name = data["name"]
         role = data.get("role", "player")
+        posistion = data.get("position", "")
         club_name = data.get("clubName", "")
         age_group = data.get("ageGroup", "")
         division = data.get("division", "")
@@ -96,6 +98,7 @@ def create_user_profile():
             "name": name,
             "email": email,
             "role": role,
+            "position": posistion,
             "clubName": club_name,
             "ageGroup": age_group,
             "division": division,
