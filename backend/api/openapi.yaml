@@ -1268,13 +1268,18 @@ paths:
           schema:
             type: object
             required:
+              - id
               - driverName
               - seats
               - location
               - pickup
               - time
               - matchId
+              - matchDetails
             properties:
+              id:
+                type: string
+                description: The unique ID of the ride
               driverName:
                 type: string
                 description: The name of the driver
@@ -1355,8 +1360,8 @@ paths:
     post:
       x-google-backend:
         address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/request
-      summary: Request a carpool ride
-      description: Allows a user to request a ride for a specific match.
+      summary: Confirm a carpool ride request
+      description: Allows a user to confirm a ride for a specific match. The ride request is automatically confirmed, the available seats are reduced, and the user's name is added to the carpool's passenger list.
       operationId: requestRide
       consumes:
         - application/json
@@ -1365,7 +1370,7 @@ paths:
       parameters:
         - in: body
           name: body
-          description: Ride request details
+          description: Ride confirmation details
           required: true
           schema:
             type: object
@@ -1375,37 +1380,121 @@ paths:
             properties:
               userName:
                 type: string
-                description: The name of the user requesting a ride
+                description: The name of the user requesting the ride
               ride_id:
                 type: string
                 description: The unique ID of the ride
       responses:
-        '201':
-          description: Ride request submitted successfully
+        '200':
+          description: Ride confirmed successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Ride confirmed"
+              ride_id:
+                type: string
+                example: "df2673b6-26ae-46b7-9dfd-630af4fdab5a"
+              user:
+                type: string
+                example: "Jamie Roche"
         '400':
-          description: Missing required fields
+          description: Missing required fields or no available seats
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "No available seats"
+        '404':
+          description: Ride not found
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Ride not found"
         '500':
           description: Internal server error
 
-  /carpool/cancel/{ride_id}:
-    delete:
+  /carpool/cancel:
+    post:
       x-google-backend:
-        address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/cancel/{ride_id}
+        address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/cancel
       summary: Cancel a carpool ride
       description: Allows a driver to cancel a ride they offered.
       operationId: cancelRide
+      consumes:
+        - application/json
       produces:
         - application/json
       parameters:
-        - in: path
-          name: ride_id
-          type: string
+        - in: body
+          name: body
+          description: The ride ID to be canceled
           required: true
-          description: The unique ID of the ride to be canceled
+          schema:
+            type: object
+            properties:
+              rideId:
+                type: string
+                description: The unique ID of the ride to be canceled
       responses:
         '200':
           description: Ride cancelled successfully
         '400':
-          description: Invalid ride ID
+          description: Missing ride ID in request
+        '404':
+          description: Ride not found
         '500':
           description: Internal server error
+
+  /carpool/passengers:
+    get:
+      x-google-backend:
+        address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/passengers
+      summary: Retrieve carpool passengers
+      description: Fetches all passengers currently assigned to carpools.
+      operationId: getPassengers
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: List of passengers retrieved successfully
+        '500':
+          description: Internal server error
+
+  /carpool/passenger/cancel:
+    post:
+      x-google-backend:
+        address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/passenger/cancel
+      summary: Cancel a passenger's ride
+      description: Allows a passenger to cancel their ride and free up a seat.
+      operationId: cancelPassengerRide
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: The ride ID and passenger name to cancel
+          required: true
+          schema:
+            type: object
+            properties:
+              rideId:
+                type: string
+                description: The unique ID of the ride
+              passengerName:
+                type: string
+                description: The name of the passenger
+      responses:
+        '200':
+          description: Passenger removed successfully
+        '400':
+          description: Invalid request parameters
+        '500':
+          description: Internal server error
+

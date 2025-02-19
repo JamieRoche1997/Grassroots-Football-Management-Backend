@@ -4,7 +4,7 @@ import os
 from flask import Flask, request, jsonify
 from firebase_admin import credentials, firestore, initialize_app
 from flask_cors import CORS
-from google.cloud import secretmanager
+from google.cloud import firestore as fs, secretmanager
 
 # Initialise Flask app
 app = Flask(__name__)
@@ -60,7 +60,9 @@ def offer_ride():
 
         ride_ref = db.collection("carpools").document()
         ride_data = {
+            "id": ride_ref.id,
             "driverName": data["driverName"],
+            "driverEmail": data["driverEmail"],
             "seats": data["seats"],
             "location": data["location"],
             "pickup": data["pickup"],
@@ -94,27 +96,59 @@ def get_rides():
 def request_ride():
     try:
         data = request.json
-        request_ref = db.collection("ride_requests").document()
-        request_data = {
-            "userName": data["userName"],
-            "ride_id": data["ride_id"],
-            "status": "pending",
-        }
-        request_ref.set(request_data)
-        return jsonify({"message": "Ride request submitted"}), 201
+        user_name = data.get("userName")
+        ride_id = data.get("ride_id")
+
+        if not user_name or not ride_id:
+            return jsonify({"error": "userName and ride_id are required"}), 400
+
+        ride_ref = db.collection("carpools").document(ride_id)
+        ride = ride_ref.get()
+
+        if not ride.exists:
+            return jsonify({"error": "Ride not found"}), 404
+
+        ride_data = ride.to_dict()
+
+        # Ensure there are available seats
+        if ride_data["seats"] <= 0:
+            return jsonify({"error": "No available seats"}), 400
+
+        # Update ride document: Reduce seats & add user to `passengers`
+        ride_ref.update({
+            "seats": ride_data["seats"] - 1,
+            "passengers": fs.ArrayUnion([user_name])
+        })
+
+        return jsonify({"message": "Ride confirmed", "ride_id": ride_id, "user": user_name}), 200
+
     except Exception as e:
-        logger.error("Error requesting ride: %s", str(e))
+        logger.error("Error confirming ride request: %s", str(e))
         return jsonify({"error": str(e)}), 500
 
 
 # ❌ Cancel a Ride
-@app.route("/carpool/cancel/<ride_id>", methods=["DELETE"])
-def cancel_ride(ride_id):
+@app.route("/carpool/cancel", methods=["POST"])
+def cancel_ride():
     try:
-        db.collection("carpools").document(ride_id).delete()
+        data = request.json
+        ride_id = data.get("rideId")  # ✅ Get ride ID from request body
+
+        if not ride_id:
+            return jsonify({"error": "Missing rideId in request body"}), 400
+
+        logger.info("Received request to cancel ride: %s", ride_id)  # ✅ Log received ride ID
+
+        ride_ref = db.collection("carpools").document(ride_id)
+        ride = ride_ref.get()
+
+        if not ride.exists:
+            return jsonify({"error": "Ride not found"}), 404
+
+        ride_ref.delete()
         return jsonify({"message": "Ride cancelled successfully"}), 200
+
     except Exception as e:
-        logger.error("Error cancelling ride: %s", str(e))
         return jsonify({"error": str(e)}), 500
 
 
