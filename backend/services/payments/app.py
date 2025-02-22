@@ -16,33 +16,41 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def load_service_account_secret():
-    """Load the Firebase service account credentials from Google Secret Manager."""
+def load_secret(secret_name):
+    """Load a secret from Google Secret Manager."""
     try:
         client = secretmanager.SecretManagerServiceClient()
         project_id = "grassroots-football-management"
-        secret_name = "firebase-service-account"
         secret_version = "latest"
 
         # Build the resource name of the secret version
         secret_path = f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
         response = client.access_secret_version(request={"name": secret_path})
-        service_account_info = response.payload.data.decode("UTF-8")
+        secret_value = response.payload.data.decode("UTF-8")
 
-        return json.loads(service_account_info)
+        return secret_value
     except Exception as e:
-        logger.error("Error loading service account secret: %s", str(e))
-        raise RuntimeError(f"Failed to load service account secret: {str(e)}") from e
+        logger.error("Error loading secret %s: %s", secret_name, str(e))
+        raise RuntimeError(f"Failed to load secret {secret_name}: {str(e)}") from e
 
 
-# Initialise Firebase Admin with secret-loaded credentials
+# Load Firebase service account
 try:
-    service_account_info = load_service_account_secret()
+    service_account_info = json.loads(load_secret("firebase-service-account"))
     cred = credentials.Certificate(service_account_info)
     initialize_app(cred)
-    logger.debug("Firebase Admin initialised successfully")
+    logger.debug("Firebase Admin initialized successfully")
 except Exception as e:
-    logger.error("Failed to initialise Firebase Admin: %s", str(e))
+    logger.error("Failed to initialize Firebase Admin: %s", str(e))
+    raise
+
+# Load Stripe secret key
+try:
+    stripe_secret_key = load_secret("stripe-secret-key")
+    stripe.api_key = stripe_secret_key
+    logger.debug("Stripe API key loaded successfully")
+except Exception as e:
+    logger.error("Failed to load Stripe API key: %s", str(e))
     raise
 
 # Initialise Firestore
@@ -88,12 +96,9 @@ def create_product():
     except ValueError as e:
         return jsonify({"error": "Invalid value: " + str(e)}), 400
 
-if __name__ == '__main__':
-    app.run(debug=True)
-
 
 # Run the Flask app
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 8087))
     logger.info("Starting app on port %d", port)
     app.run(host="0.0.0.0", port=port)
