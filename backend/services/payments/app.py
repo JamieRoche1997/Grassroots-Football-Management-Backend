@@ -94,6 +94,6 @@ if __name__ == '__main__':
 
 # Run the Flask app
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8087))
+    port = int(os.environ.get("PORT", 8080))
     logger.info("Starting app on port %d", port)
     app.run(host="0.0.0.0", port=port)
