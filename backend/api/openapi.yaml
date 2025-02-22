@@ -1449,29 +1449,15 @@ paths:
           description: Ride not found
         '500':
           description: Internal server error
-
-  /carpool/passengers:
-    get:
-      x-google-backend:
-        address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/passengers
-      summary: Retrieve carpool passengers
-      description: Fetches all passengers currently assigned to carpools.
-      operationId: getPassengers
-      produces:
-        - application/json
-      responses:
-        '200':
-          description: List of passengers retrieved successfully
-        '500':
-          description: Internal server error
-
-  /carpool/passenger/cancel:
+ 
+  # Payments Microservice Routes
+  /api/products/create:
     post:
       x-google-backend:
-        address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/passenger/cancel
-      summary: Cancel a passenger's ride
-      description: Allows a passenger to cancel their ride and free up a seat.
-      operationId: cancelPassengerRide
+        address: https://microservice-payments-180320540339.europe-west2.run.app/api/products/create
+      summary: Create a new product in Stripe
+      description: Creates a new product and price in Stripe when a product is listed for sale.
+      operationId: createProduct
       consumes:
         - application/json
       produces:
@@ -1479,22 +1465,63 @@ paths:
       parameters:
         - in: body
           name: body
-          description: The ride ID and passenger name to cancel
+          description: Product details for Stripe creation
           required: true
           schema:
             type: object
             properties:
-              rideId:
-                type: string
-                description: The unique ID of the ride
-              passengerName:
-                type: string
-                description: The name of the passenger
+              products:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - name
+                    - price
+                  properties:
+                    name:
+                      type: string
+                      description: Name of the product
+                      example: "Jersey"
+                    price:
+                      type: number
+                      format: float
+                      description: Base price of the product in EUR
+                      example: 50.00
+                    installmentMonths:
+                      type: integer
+                      description: Number of months for installment plan (null for full payment)
+                      example: 6
       responses:
-        '200':
-          description: Passenger removed successfully
+        '201':
+          description: Product created successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Products created successfully"
+              products:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Name of the product
+                    stripe_product_id:
+                      type: string
+                      description: Stripe product ID
+                    stripe_price_id:
+                      type: string
+                      description: Stripe price ID
+                    price:
+                      type: number
+                      format: float
+                      description: Price of the product
+                    installmentMonths:
+                      type: integer
+                      description: Installment months (if applicable)
         '400':
-          description: Invalid request parameters
+          description: Missing or invalid request data
         '500':
-          description: Internal server error
-
+          description: Internal server error or Stripe API failure

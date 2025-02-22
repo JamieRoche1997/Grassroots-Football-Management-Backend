@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ['authentication', 'user-management', 'team-management', 'schedule-management', 'player-ratings', 'match-ratings', 'carpool']
+        service: ['authentication', 'user-management', 'team-management', 'schedule-management', 'player-ratings', 'match-ratings', 'carpool', 'payments']
 
     steps:
       - name: Checkout code
