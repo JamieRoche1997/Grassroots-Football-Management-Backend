@@ -16,41 +16,33 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def load_secret(secret_name):
-    """Load a secret from Google Secret Manager."""
+def load_service_account_secret():
+    """Load the Firebase service account credentials from Google Secret Manager."""
     try:
         client = secretmanager.SecretManagerServiceClient()
         project_id = "grassroots-football-management"
+        secret_name = "firebase-service-account"
         secret_version = "latest"
 
         # Build the resource name of the secret version
         secret_path = f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
         response = client.access_secret_version(request={"name": secret_path})
-        secret_value = response.payload.data.decode("UTF-8")
+        service_account_info = response.payload.data.decode("UTF-8")
 
-        return secret_value
+        return json.loads(service_account_info)
     except Exception as e:
-        logger.error("Error loading secret %s: %s", secret_name, str(e))
-        raise RuntimeError(f"Failed to load secret {secret_name}: {str(e)}") from e
+        logger.error("Error loading service account secret: %s", str(e))
+        raise RuntimeError(f"Failed to load service account secret: {str(e)}") from e
 
 
-# Load Firebase service account
+# Initialise Firebase Admin with secret-loaded credentials
 try:
-    service_account_info = json.loads(load_secret("firebase-service-account"))
+    service_account_info = load_service_account_secret()
     cred = credentials.Certificate(service_account_info)
     initialize_app(cred)
-    logger.debug("Firebase Admin initialized successfully")
+    logger.debug("Firebase Admin initialised successfully")
 except Exception as e:
-    logger.error("Failed to initialize Firebase Admin: %s", str(e))
-    raise
-
-# Load Stripe secret key
-try:
-    stripe_secret_key = load_secret("stripe-secret-key")
-    stripe.api_key = stripe_secret_key
-    logger.debug("Stripe API key loaded successfully")
-except Exception as e:
-    logger.error("Failed to load Stripe API key: %s", str(e))
+    logger.error("Failed to initialise Firebase Admin: %s", str(e))
     raise
 
 # Initialise Firestore
