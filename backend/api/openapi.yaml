@@ -1611,7 +1611,7 @@ paths:
         '500':
           description: Internal server error or Stripe API failure
 
-  /products/list:
+/products/list:
     get:
       x-google-backend:
         address: https://microservice-payments-180320540339.europe-west2.run.app/products/list
@@ -1631,13 +1631,11 @@ paths:
           description: The age group of the team retrieving the products.
           required: true
           type: string
-          example: "Under 18"
         - in: query
           name: division
           description: The division of the team retrieving the products.
           required: true
           type: string
-          example: "Premier Division"
       responses:
         '200':
           description: List of available products for the specific team inside the club.
@@ -1652,28 +1650,22 @@ paths:
                     id:
                       type: string
                       description: Unique product ID from Firestore.
-                      example: "product_123456"
                     name:
                       type: string
                       description: Name of the product.
-                      example: "Jersey"
                     price:
                       type: number
                       format: float
                       description: Base price of the product in EUR.
-                      example: 50.00
                     installmentMonths:
                       type: integer
                       description: Number of months for installment plan (null for full payment).
-                      example: 6
                     stripe_product_id:
                       type: string
                       description: The Stripe product ID linked to this product.
-                      example: "prod_ABC123"
                     stripe_price_id:
                       type: string
                       description: The Stripe price ID linked to this product.
-                      example: "price_XYZ789"
         '400':
           description: Missing or invalid request data.
         '500':
