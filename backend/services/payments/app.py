@@ -127,6 +127,11 @@ def create_product():
     try:
         data = request.json
         club_name = data.get("clubName")
+        age_group = data.get("ageGroup")
+        division = data.get("division")
+
+        if not club_name or not age_group or not division:
+            return jsonify({"error": "Club name, age group, and division are required"}), 400
 
         # 🔍 Retrieve club’s Stripe account ID
         club_ref = db.collection("clubs").document(club_name).get()
@@ -145,8 +150,12 @@ def create_product():
             product_name = product["name"]
             price_amount = int(product["price"] * 100)  # Convert to cents
 
-            # 🔍 Step 1: Check if product already exists in Firestore
-            existing_product_ref = db.collection("clubs").document(club_name).collection("products").document(product_name)
+            # 🔍 Step 1: Check if product already exists in Firestore under the correct age group & division
+            existing_product_ref = (
+                db.collection("clubs").document(club_name)
+                .collection("teams").document(f"{age_group}_{division}")  # 🏆 Store under the specific team
+                .collection("products").document(product_name)
+            )
             existing_product = existing_product_ref.get()
 
             if existing_product.exists:
@@ -157,7 +166,8 @@ def create_product():
                 # 🆕 Step 2: Create a new product if it doesn’t exist
                 stripe_product = stripe.Product.create(
                     name=product_name,
-                    description=f"Product for {club_name}",
+                    description=f"Product for {club_name} - {age_group} {division}",
+                    metadata={"club": club_name, "ageGroup": age_group, "division": division},  # ✅ Save metadata
                     stripe_account=stripe_account_id  # ✅ Uses Express account
                 )
 
@@ -165,31 +175,83 @@ def create_product():
                     unit_amount=price_amount,
                     currency="eur",
                     product=stripe_product.id,
+                    metadata={"club": club_name, "ageGroup": age_group, "division": division},  # ✅ Save metadata
                     stripe_account=stripe_account_id  # ✅ Ensures price is linked to club
                 )
 
                 stripe_product_id = stripe_product.id
                 stripe_price_id = stripe_price.id
 
-                # ✅ Step 3: Store in Firestore to prevent future duplication
+                # ✅ Step 3: Store in Firestore under the correct team
                 existing_product_ref.set({
                     "stripe_product_id": stripe_product_id,
                     "stripe_price_id": stripe_price_id,
                     "price": product["price"],
-                    "installmentMonths": product["installmentMonths"]
+                    "installmentMonths": product["installmentMonths"],
+                    "ageGroup": age_group,
+                    "division": division
                 })
 
             created_products.append({
                 "name": product_name,
                 "stripe_product_id": stripe_product_id,
                 "stripe_price_id": stripe_price_id,
-                "price": product["price"]
+                "price": product["price"],
+                "ageGroup": age_group,
+                "division": division
             })
 
         return jsonify({"message": "Products created successfully", "products": created_products}), 201
 
     except stripe.error.StripeError as e:
         return jsonify({"error": "Stripe error: " + str(e)}), 500
+    except Exception as e:
+        logger.error("Unexpected error: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+    
+
+@app.route('/products/list', methods=['GET'])
+def list_products():
+    try:
+        club_name = request.args.get("clubName")
+        age_group = request.args.get("ageGroup")
+        division = request.args.get("division")
+
+        if not club_name or not age_group or not division:
+            return jsonify({"error": "Club name, age group, and division are required"}), 400
+
+        # 🔍 Retrieve club’s Firestore document
+        club_ref = db.collection("clubs").document(club_name).get()
+        if not club_ref.exists:
+            return jsonify({"error": "Club not found"}), 404
+
+        # 🔍 Retrieve all products for the specified age group & division
+        products_ref = (
+            db.collection("clubs").document(club_name)
+            .collection("teams").document(f"{age_group}_{division}")
+            .collection("products").stream()
+        )
+
+        products = []
+
+        for product in products_ref:
+            product_data = product.to_dict()
+            products.append({
+                "id": product.id,
+                "name": product_data.get("name"),
+                "price": product_data.get("price"),
+                "installmentMonths": product_data.get("installmentMonths", None),
+                "stripe_product_id": product_data.get("stripe_product_id"),
+                "stripe_price_id": product_data.get("stripe_price_id"),
+                "ageGroup": product_data.get("ageGroup"),
+                "division": product_data.get("division"),
+            })
+
+        return jsonify({"products": products}), 200
+
+    except Exception as e:
+        logger.error("Unexpected error: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # Run the Flask app

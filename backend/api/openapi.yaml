@@ -1547,6 +1547,14 @@ paths:
                 type: string
                 description: The name of the club associated with this product.
                 example: "Cobh Ramblers"
+              ageGroup:
+                type: string
+                description: The age group of the team listing the product.
+                example: "Under 18"
+              division:
+                type: string
+                description: The division of the team listing the product.
+                example: "Premier Division"
               products:
                 type: array
                 items:
@@ -1602,3 +1610,71 @@ paths:
           description: Missing or invalid request data
         '500':
           description: Internal server error or Stripe API failure
+
+/products/list:
+    get:
+      x-google-backend:
+        address: https://microservice-payments-180320540339.europe-west2.run.app/products/list
+      summary: Retrieve available products for a specific team inside a club
+      description: Fetches all products listed for sale in a club's Stripe Express account filtered by age group and division.
+      operationId: listProducts
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          description: The name of the club whose products should be retrieved.
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          description: The age group of the team retrieving the products.
+          required: true
+          type: string
+          example: "Under 18"
+        - in: query
+          name: division
+          description: The division of the team retrieving the products.
+          required: true
+          type: string
+          example: "Premier Division"
+      responses:
+        '200':
+          description: List of available products for the specific team inside the club.
+          schema:
+            type: object
+            properties:
+              products:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Unique product ID from Firestore.
+                      example: "product_123456"
+                    name:
+                      type: string
+                      description: Name of the product.
+                      example: "Jersey"
+                    price:
+                      type: number
+                      format: float
+                      description: Base price of the product in EUR.
+                      example: 50.00
+                    installmentMonths:
+                      type: integer
+                      description: Number of months for installment plan (null for full payment).
+                      example: 6
+                    stripe_product_id:
+                      type: string
+                      description: The Stripe product ID linked to this product.
+                      example: "prod_ABC123"
+                    stripe_price_id:
+                      type: string
+                      description: The Stripe price ID linked to this product.
+                      example: "price_XYZ789"
+        '400':
+          description: Missing or invalid request data.
+        '500':
+          description: Internal server error or Stripe API failure.
