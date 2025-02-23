@@ -1529,7 +1529,9 @@ paths:
       x-google-backend:
         address: https://microservice-payments-180320540339.europe-west2.run.app/products/create
       summary: Create a new product in a club's Stripe Express account
-      description: Creates a new product and price inside the club's own Stripe Express account when a product is listed for sale.
+      description: |
+        Creates a new product and price inside the club's own Stripe Express account. 
+        If `installmentMonths` is provided, the price will be set as a recurring monthly subscription with a defined cancellation period.
       operationId: createProduct
       consumes:
         - application/json
@@ -1563,16 +1565,46 @@ paths:
                     name:
                       type: string
                       description: Name of the product.
+                      example: "Membership Fee"
                     price:
                       type: number
                       format: float
                       description: Base price of the product in EUR.
+                      example: 450.00
                     installmentMonths:
                       type: integer
-                      description: Number of months for installment plan (null for full payment).
+                      description: Number of months for installment plan. If provided, the product will be created as a subscription.
+                      example: 6
       responses:
         '201':
           description: Product created successfully in the club's Stripe Express account.
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Products created successfully"
+              products:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Name of the product.
+                    stripe_product_id:
+                      type: string
+                      description: Stripe product ID.
+                    stripe_price_id:
+                      type: string
+                      description: Stripe price ID.
+                    price:
+                      type: number
+                      format: float
+                      description: Price of the product in EUR.
+                    installmentMonths:
+                      type: integer
+                      description: Number of months for installment plan (null for full payment).
         '400':
           description: Missing or invalid request data.
         '500':
@@ -1643,7 +1675,9 @@ paths:
       x-google-backend:
         address: https://microservice-payments-180320540339.europe-west2.run.app/stripe/create-checkout-session
       summary: Create a Stripe Checkout session
-      description: Creates a Stripe Checkout session for a club's Stripe Express account, allowing users to complete payments via Stripe.
+      description: |
+        Creates a Stripe Checkout session for a club's Stripe Express account. 
+        Handles both one-time and subscription-based payments dynamically.
       operationId: createCheckoutSession
       consumes:
         - application/json
@@ -1664,6 +1698,16 @@ paths:
                 type: string
                 description: The name of the club processing the payment.
                 example: "Cobh Ramblers"
+              ageGroup:
+                type: string
+                description: The age group of the club making the purchase.
+              division:
+                type: string
+                description: The division of the team making the purchase.
+              customerEmail:
+                type: string
+                description: The email of the customer making the purchase.
+                example: "customer@email.com"
               cart:
                 type: array
                 items:
@@ -1711,7 +1755,6 @@ paths:
               error:
                 type: string
                 example: "Internal server error"
-
 
   /stripe/webhook:
     post:

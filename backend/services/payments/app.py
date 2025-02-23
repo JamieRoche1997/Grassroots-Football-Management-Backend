@@ -148,10 +148,7 @@ def create_product():
         division = data.get("division")
 
         if not club_name or not age_group or not division:
-            return (
-                jsonify({"error": "Club name, age group, and division are required"}),
-                400,
-            )
+            return jsonify({"error": "Club name, age group, and division are required"}), 400
 
         # 🔍 Retrieve club’s Stripe account ID
         club_ref = db.collection("clubs").document(club_name).get()
@@ -168,9 +165,9 @@ def create_product():
 
         for product in data.get("products", []):
             product_name = product["name"]
-            price_amount = int(product["price"] * 100)  # Convert to cents
+            total_price = float(product["price"])
+            installment_months = product.get("installmentMonths")
 
-            # 🔍 Step 1: Check if product already exists in Firestore under the correct age group & division
             existing_product_ref = (
                 db.collection("clubs")
                 .document(club_name)
@@ -186,7 +183,7 @@ def create_product():
                 stripe_product_id = existing_data["stripe_product_id"]
                 stripe_price_id = existing_data["stripe_price_id"]
             else:
-                # 🆕 Step 2: Create a new product if it doesn’t exist
+                # 🆕 Step 1: Create Stripe Product
                 stripe_product = stripe.Product.create(
                     name=product_name,
                     description=f"Product for {club_name} - {age_group} {division}",
@@ -194,21 +191,40 @@ def create_product():
                         "club": club_name,
                         "ageGroup": age_group,
                         "division": division,
-                    },  # ✅ Save metadata
+                    },
                     stripe_account=stripe_account_id,  # ✅ Uses Express account
                 )
 
-                stripe_price = stripe.Price.create(
-                    unit_amount=price_amount,
-                    currency="eur",
-                    product=stripe_product.id,
-                    metadata={
-                        "club": club_name,
-                        "ageGroup": age_group,
-                        "division": division,
-                    },  # ✅ Save metadata
-                    stripe_account=stripe_account_id,  # ✅ Ensures price is linked to club
-                )
+                if installment_months and installment_months > 1:
+                    # 🛠️ Step 2a: Create a recurring price for installments
+                    monthly_price = round(total_price / installment_months, 2)  # Divide total over months
+                    stripe_price = stripe.Price.create(
+                        unit_amount=int(monthly_price * 100),  # Convert to cents
+                        currency="eur",
+                        recurring={"interval": "month"},  # Subscription-based pricing
+                        product=stripe_product.id,
+                        metadata={
+                            "club": club_name,
+                            "ageGroup": age_group,
+                            "division": division,
+                            "installmentMonths": installment_months,
+                        },
+                        stripe_account=stripe_account_id,
+                    )
+
+                else:
+                    # 💰 Step 2b: Create a one-time price
+                    stripe_price = stripe.Price.create(
+                        unit_amount=int(total_price * 100),  # Convert to cents
+                        currency="eur",
+                        product=stripe_product.id,
+                        metadata={
+                            "club": club_name,
+                            "ageGroup": age_group,
+                            "division": division,
+                        },
+                        stripe_account=stripe_account_id,
+                    )
 
                 stripe_product_id = stripe_product.id
                 stripe_price_id = stripe_price.id
@@ -218,8 +234,8 @@ def create_product():
                     {
                         "stripe_product_id": stripe_product_id,
                         "stripe_price_id": stripe_price_id,
-                        "price": product["price"],
-                        "installmentMonths": product["installmentMonths"],
+                        "price": total_price,
+                        "installmentMonths": installment_months,
                         "ageGroup": age_group,
                         "division": division,
                     }
@@ -230,21 +246,14 @@ def create_product():
                     "name": product_name,
                     "stripe_product_id": stripe_product_id,
                     "stripe_price_id": stripe_price_id,
-                    "price": product["price"],
+                    "price": total_price,
                     "ageGroup": age_group,
                     "division": division,
+                    "installmentMonths": installment_months,
                 }
             )
 
-        return (
-            jsonify(
-                {
-                    "message": "Products created successfully",
-                    "products": created_products,
-                }
-            ),
-            201,
-        )
+        return jsonify({"message": "Products created successfully", "products": created_products}), 201
 
     except stripe.error.StripeError as e:
         return jsonify({"error": "Stripe error: " + str(e)}), 500
@@ -311,6 +320,9 @@ def create_checkout_session():
         data = request.json
         cart_items = data.get("cart", [])
         club_name = data.get("clubName")
+        age_group = data.get("ageGroup")
+        division = data.get("division")
+        customer_email = data.get("customerEmail")
 
         if not club_name or not cart_items:
             return jsonify({"error": "Club name and cart items are required"}), 400
@@ -327,6 +339,7 @@ def create_checkout_session():
             return jsonify({"error": "Club has not completed Stripe onboarding"}), 400
 
         line_items = []
+        checkout_mode = "payment"  # Default to one-time payments
 
         for item in cart_items:
             price_id = item.get("priceId")  # ✅ Extract `priceId`
@@ -335,21 +348,38 @@ def create_checkout_session():
             if not price_id:
                 return jsonify({"error": "Missing `priceId` in cart"}), 400
 
-            # ✅ Use existing `stripe_price_id`
-            line_items.append(
-                {
-                    "price": price_id,
-                    "quantity": quantity,
-                }
-            )
+            # 🔍 Retrieve product details from Firestore to check for installments
+            product_ref = db.collection("clubs").document(club_name).collection("teams").document(
+                f"{age_group}_{division}").collection("products").document(item.get("productId")).get()
 
-        # ✅ Create Stripe Checkout Session (For Connected Accounts)
+            if not product_ref.exists:
+                return jsonify({"error": f"Product {item.get('productId')} not found"}), 400
+
+            product_data = product_ref.to_dict()
+            installment_months = product_data.get("installmentMonths")
+
+            # 🛠️ If product has installments, switch to subscription mode
+            if installment_months and installment_months > 1:
+                checkout_mode = "subscription"
+
+            line_items.append({
+                "price": price_id,
+                "quantity": quantity,
+            })
+
+        # ✅ Create Stripe Checkout Session (Handles both one-time & subscriptions)
         session = stripe.checkout.Session.create(
-            mode="payment",
+            mode=checkout_mode,  # ✅ Dynamically set to "payment" or "subscription"
             success_url="http://localhost:5173/payments/success?session_id={CHECKOUT_SESSION_ID}",
             cancel_url="http://localhost:5173/payments/cancel",
             line_items=line_items,
             stripe_account=stripe_account_id,
+            metadata={
+                "clubName": club_name,
+                "ageGroup": age_group,
+                "division": division,
+                "customerEmail": customer_email,
+            }
         )
 
         return jsonify({"checkoutUrl": session.url})
@@ -387,7 +417,9 @@ def handle_successful_payment(session):
     """Process successful payment, update Firestore, and notify the user."""
     try:
         # ✅ Get customer email from customer_details
-        customer_email = session.get("customer_email") or session.get("customer_details", {}).get("email")
+        customer_email = session.get("customer_email") or session.get(
+            "customer_details", {}
+        ).get("email")
 
         # ✅ Retrieve metadata
         metadata = session.get("metadata", {})
@@ -398,7 +430,7 @@ def handle_successful_payment(session):
         if not customer_email:
             logger.error("Customer email is missing from Stripe session.")
             return
-        
+
         if not club_name:
             logger.error("Missing required metadata: clubName")
             return
@@ -411,24 +443,25 @@ def handle_successful_payment(session):
             user_id = doc.id  # Get the document ID
 
             # ✅ Update user document to mark as paid
-            db.collection("users").document(user_id).update({
-                "membershipPaid": True,
-                "lastPaymentDate": fs.SERVER_TIMESTAMP
-            })
+            db.collection("users").document(user_id).update(
+                {"membershipPaid": True, "lastPaymentDate": fs.SERVER_TIMESTAMP}
+            )
 
             # ✅ Add payment record in Firestore
             payment_ref = db.collection("payments").document()
-            payment_ref.set({
-                "userId": user_id,
-                "email": customer_email,
-                "amount": session["amount_total"] / 100,  # Convert from cents
-                "currency": session["currency"],
-                "status": "completed",
-                "club": club_name,
-                "ageGroup": age_group,
-                "division": division,
-                "timestamp": fs.SERVER_TIMESTAMP
-            })
+            payment_ref.set(
+                {
+                    "userId": user_id,
+                    "email": customer_email,
+                    "amount": session["amount_total"] / 100,  # Convert from cents
+                    "currency": session["currency"],
+                    "status": "completed",
+                    "club": club_name,
+                    "ageGroup": age_group,
+                    "division": division,
+                    "timestamp": fs.SERVER_TIMESTAMP,
+                }
+            )
 
             logger.info(f"✅ Payment successfully processed for {customer_email}")
 
