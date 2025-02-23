@@ -463,10 +463,39 @@ def handle_successful_payment(session):
                 }
             )
 
-            logger.info(f"✅ Payment successfully processed for {customer_email}")
+            logger.info("✅ Payment successfully processed for %s", customer_email)
 
     except Exception as e:
-        logger.error(f"Error processing payment: {str(e)}")
+        logger.error("Error processing payment: %s", str(e))
+
+
+@app.route("/stripe/verify-payment", methods=["GET"])
+def verify_payment():
+    try:
+        session_id = request.args.get("session_id")
+        if not session_id:
+            return jsonify({"error": "Missing session_id"}), 400
+
+        # ✅ Retrieve Checkout Session from Stripe
+        session = stripe.checkout.Session.retrieve(session_id)
+
+        # ✅ Ensure the payment was successful
+        if session["payment_status"] != "paid":
+            return jsonify({"error": "Payment not completed"}), 400
+
+        return jsonify({
+            "message": "Payment verified successfully",
+            "amount_total": session["amount_total"] / 100,  # Convert cents to EUR
+            "currency": session["currency"],
+            "email": session["customer_details"]["email"] if session.get("customer_details") else None,
+            "session_id": session["id"],
+        }), 200
+
+    except stripe.error.StripeError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        logger.error("Error verifying payment: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # Run the Flask app
