@@ -350,11 +350,6 @@ def create_checkout_session():
             cancel_url="http://localhost:5173/payments/cancel",
             line_items=line_items,
             stripe_account=stripe_account_id,
-            payment_intent_data={
-                "transfer_data": {
-                    "destination": stripe_account_id  
-                }
-            },
         )
 
         return jsonify({"checkoutUrl": session.url})
