@@ -41,18 +41,6 @@ jobs:
             --region europe-west2 \
             --allow-unauthenticated
 
-      - name: Cleanup Docker Images & Unused Artifacts
-        if: success()
-        run: |
-          gcloud container images delete gcr.io/grassroots-football-management/microservice-${{ matrix.service }} --force-delete-tags --quiet
-          echo "Removed old images from Container Registry."
-
-          # Cleanup older Cloud Build artifacts
-          gcloud builds list --filter="STATUS=SUCCESS" --format="value(ID)" | tail -n +6 | while read -r build_id; do
-            gcloud builds cancel "$build_id" --quiet || true
-          done
-          echo "Old Cloud Build artifacts cleaned up."
-
   update-api-gateway:
     needs: deploy  # This job will run after the microservices are deployed
     runs-on: ubuntu-latest
@@ -71,26 +59,21 @@ jobs:
 
       - name: Deploy updated API config to API Gateway
         run: |
+          # Navigate to the correct directory for the OpenAPI spec
           cd backend/api
-          
+
+          # Increment the API config version dynamically (e.g., v2-config)
           API_VERSION=$(date +'%Y%m%d-%H%M%S')
           
+          # Create the new API config
           gcloud api-gateway api-configs create "v${API_VERSION}" \
             --api=gfm \
             --openapi-spec=openapi.yaml \
             --project=grassroots-football-management
 
+          # Update the API Gateway to use the new configuration
           gcloud api-gateway gateways update grassroots-gateway \
             --api=gfm \
             --api-config="v${API_VERSION}" \
             --location=europe-west2 \
             --project=grassroots-football-management
-
-      - name: Cleanup Old API Configurations
-        if: success()
-        run: |
-          OLD_CONFIGS=$(gcloud api-gateway api-configs list --api=gfm --format="value(name)" | head -n -3)
-          for config in $OLD_CONFIGS; do
-            gcloud api-gateway api-configs delete "$config" --api=gfm --quiet || true
-          done
-          echo "Old API configurations cleaned up."
