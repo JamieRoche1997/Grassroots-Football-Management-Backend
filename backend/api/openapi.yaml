@@ -1643,7 +1643,7 @@ paths:
       x-google-backend:
         address: https://microservice-payments-180320540339.europe-west2.run.app/stripe/create-checkout-session
       summary: Create a Stripe Checkout session
-      description: Creates a Stripe Checkout session for a club's Stripe Express account.
+      description: Creates a Stripe Checkout session for a club's Stripe Express account, allowing users to complete payments via Stripe.
       operationId: createCheckoutSession
       consumes:
         - application/json
@@ -1652,7 +1652,7 @@ paths:
       parameters:
         - in: body
           name: body
-          description: Checkout session details, including the cart and club information.
+          description: Checkout session details, including cart items and club information.
           required: true
           schema:
             type: object
@@ -1669,42 +1669,49 @@ paths:
                 items:
                   type: object
                   required:
-                    - product
+                    - productId
+                    - priceId
                     - quantity
                   properties:
-                    product:
-                      type: object
-                      required:
-                        - name
-                        - price
-                      properties:
-                        name:
-                          type: string
-                          description: Name of the product being purchased.
-                          example: "Jersey"
-                        price:
-                          type: number
-                          format: float
-                          description: Price of the product in EUR.
-                          example: 50.00
+                    productId:
+                      type: string
+                      description: The unique identifier of the product.
+                      example: "prod_RpLpYtn9vcUnNU"
+                    priceId:
+                      type: string
+                      description: The Stripe price ID linked to the product.
+                      example: "price_1Qvh7b2ShZcnCRAUHmXkReB0"
                     quantity:
                       type: integer
-                      description: Quantity of the product purchased.
+                      description: Quantity of the product being purchased.
                       example: 2
       responses:
         '200':
-          description: Checkout session created successfully.
+          description: Stripe Checkout session created successfully.
           schema:
             type: object
             properties:
               checkoutUrl:
                 type: string
-                description: The Stripe-hosted checkout URL.
-                example: "https://checkout.stripe.com/pay/cs_test_123456"
+                description: The URL for Stripe-hosted Checkout.
+                example: "https://checkout.stripe.com/c/pay/cs_test_a1G..."
         '400':
           description: Missing or invalid request data.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Club name and cart items are required."
         '500':
           description: Internal server error or Stripe API failure.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"
+
 
   /stripe/webhook:
     post:

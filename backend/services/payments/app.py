@@ -258,12 +258,12 @@ def create_checkout_session():
     try:
         data = request.json
         cart_items = data.get("cart", [])
-        club_name = data.get("clubName")  # ✅ Ensure we know which club is making the sale
+        club_name = data.get("clubName")
 
         if not club_name or not cart_items:
             return jsonify({"error": "Club name and cart items are required"}), 400
 
-        # ✅ Retrieve club’s Stripe Express account ID from Firestore
+        # ✅ Retrieve club’s Stripe Express account ID
         club_ref = db.collection("clubs").document(club_name).get()
         if not club_ref.exists:
             return jsonify({"error": "Club not found"}), 404
@@ -274,18 +274,20 @@ def create_checkout_session():
         if not stripe_account_id:
             return jsonify({"error": "Club has not completed Stripe onboarding"}), 400
 
-        # ✅ Create line items for Stripe Checkout
-        line_items = [
-            {
-                "price_data": {
-                    "currency": "eur",
-                    "product_data": {"name": item["product"]["name"]},
-                    "unit_amount": int(item["product"]["price"] * 100),  # Convert to cents
-                },
-                "quantity": item["quantity"],
-            }
-            for item in cart_items
-        ]
+        line_items = []
+
+        for item in cart_items:
+            price_id = item.get("priceId")  # ✅ Extract `priceId`
+            quantity = item.get("quantity", 1)
+
+            if not price_id:
+                return jsonify({"error": "Missing `priceId` in cart"}), 400
+
+            # ✅ Use existing `stripe_price_id`
+            line_items.append({
+                "price": price_id,
+                "quantity": quantity,
+            })
 
         # ✅ Create Stripe Checkout Session (For Connected Accounts)
         session = stripe.checkout.Session.create(

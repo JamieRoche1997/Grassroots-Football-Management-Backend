@@ -17,33 +17,68 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Detect changes
+        id: check_changes
+        run: |
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "backend/services/${{ matrix.service }}/"; then
+            echo "changed=true" >> $GITHUB_ENV
+          else
+            echo "changed=false" >> $GITHUB_ENV
+          fi
+
       - name: Authenticate with Google Cloud
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          if [ "$changed" == "true" ]; then
+            gcloud auth activate-service-account --key-file=${{ secrets.GCP_SA_KEY }}
+          fi
 
       - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
+        run: |
+          if [ "$changed" == "true" ]; then
+            gcloud components install beta
+          fi
 
       - name: Build and push Docker image
         run: |
-          cd backend/services/${{ matrix.service }}
-          gcloud builds submit --tag gcr.io/grassroots-football-management/microservice-${{ matrix.service }} 
-
-          echo "Sleeping for 10 seconds before the next build..."
-          sleep 10
+          if [ "$changed" == "true" ]; then
+            cd backend/services/${{ matrix.service }}
+            gcloud builds submit --tag gcr.io/grassroots-football-management/microservice-${{ matrix.service }}
+            echo "Sleeping for 10 seconds before the next build..."
+            sleep 10
+          fi
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy microservice-${{ matrix.service }} \
-            --image gcr.io/grassroots-football-management/microservice-${{ matrix.service }} \
-            --platform managed \
-            --region europe-west2 \
-            --allow-unauthenticated
+          if [ "$changed" == "true" ]; then
+            gcloud run deploy microservice-${{ matrix.service }} \
+              --image gcr.io/grassroots-football-management/microservice-${{ matrix.service }} \
+              --platform managed \
+              --region europe-west2 \
+              --allow-unauthenticated
+          fi
+
+      - name: Delete old images from Google Container Registry
+        run: |
+          if [ "$changed" == "true" ]; then
+            echo "Deleting old images for ${{ matrix.service }}..."
+            gcloud container images list-tags gcr.io/grassroots-football-management/microservice-${{ matrix.service }} --format="get(digest)" --limit=5 | tail -n +2 | while read digest; do
+              gcloud container images delete gcr.io/grassroots-football-management/microservice-${{ matrix.service }}@$digest --force-delete-tags --quiet
+            done
+          fi
+
+      - name: Delete old Cloud Run revisions
+        run: |
+          if [ "$changed" == "true" ]; then
+            echo "Deleting old revisions for microservice-${{ matrix.service }}..."
+            gcloud run revisions list --service=microservice-${{ matrix.service }} --format="value(NAME)" --sort-by="~createTime" --limit=5 | tail -n +2 | while read revision; do
+              gcloud run revisions delete $revision --quiet --region europe-west2
+            done
+          fi
 
   update-api-gateway:
-    needs: deploy  # This job will run after the microservices are deployed
+    needs: deploy
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[update-api-gateway]')
 
     steps:
       - name: Checkout code
@@ -59,21 +94,33 @@ jobs:
 
       - name: Deploy updated API config to API Gateway
         run: |
-          # Navigate to the correct directory for the OpenAPI spec
           cd backend/api
-
-          # Increment the API config version dynamically (e.g., v2-config)
           API_VERSION=$(date +'%Y%m%d-%H%M%S')
-          
-          # Create the new API config
           gcloud api-gateway api-configs create "v${API_VERSION}" \
             --api=gfm \
             --openapi-spec=openapi.yaml \
             --project=grassroots-football-management
 
-          # Update the API Gateway to use the new configuration
           gcloud api-gateway gateways update grassroots-gateway \
             --api=gfm \
             --api-config="v${API_VERSION}" \
             --location=europe-west2 \
             --project=grassroots-football-management
+
+      - name: Delete old API configurations
+        run: |
+          echo "Cleaning up old API configurations..."
+          gcloud api-gateway api-configs list --api=gfm --format="value(NAME)" --sort-by="~createTime" --limit=5 | tail -n +2 | while read config; do
+            gcloud api-gateway api-configs delete $config --api=gfm --quiet
+          done
+
+      - name: Delete unused API Gateway deployments (if needed)
+        run: |
+          echo "Checking for unused API Gateways..."
+          gcloud api-gateway gateways list --format="value(NAME)" | while read gateway; do
+            USED=$(gcloud api-gateway gateways describe $gateway --format="value(apiConfig)")
+            if [ -z "$USED" ]; then
+              echo "Deleting unused gateway: $gateway"
+              gcloud api-gateway gateways delete $gateway --quiet
+            fi
+          done
