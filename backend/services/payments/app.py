@@ -56,45 +56,117 @@ except Exception as e:
 # Initialise Firestore
 db = firestore.client()
 
-@app.route('/api/products/create', methods=['POST'])
+@app.route("/stripe/status", methods=["GET"])
+def check_stripe_status():
+    try:
+        club_name = request.args.get("clubName")
+        if not club_name:
+            return jsonify({"error": "Club name is required"}), 400
+
+        # 🔍 Retrieve the club’s Stripe account ID from Firestore
+        club_ref = db.collection("clubs").document(club_name).get()
+        if not club_ref.exists:
+            return jsonify({"error": "Club not found"}), 404
+
+        club_data = club_ref.to_dict()
+        stripe_account_id = club_data.get("stripe_account_id")
+
+        return jsonify({
+            "stripe_account_id": stripe_account_id if stripe_account_id else None
+        }), 200
+
+    except ValueError as e:
+        return jsonify({"error": "Invalid value: " + str(e)}), 400
+
+
+@app.route("/stripe/connect", methods=["POST"])
+def create_connect_account():
+    try:
+        data = request.json
+        club_name = data.get("clubName")
+        email = data.get("email")
+
+        # 🔍 Check if the club already has a Stripe account
+        club_ref = db.collection("clubs").document(club_name).get()
+        if club_ref.exists:
+            club_data = club_ref.to_dict()
+            if "stripe_account_id" in club_data:
+                return jsonify({"message": "Club already has a Stripe account", "stripe_account_id": club_data["stripe_account_id"]}), 200
+
+        # ✅ Create an Express Account for the club
+        account = stripe.Account.create(
+            type="express",
+            country="IE",  # Change based on club location
+            email=email,
+            capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
+            business_type="company",
+            business_profile={"name": club_name}
+        )
+
+        # ✅ Generate onboarding link for club
+        account_link = stripe.AccountLink.create(
+            account=account.id,
+            refresh_url="http://localhost:5173/payments",  # Redirect if onboarding fails
+            return_url="http://localhost:5173/payments",  # Redirect after success
+            type="account_onboarding"
+        )
+
+        # 🔍 Store Stripe Account ID in Firestore
+        db.collection("clubs").document(club_name).set({
+            "stripe_account_id": account.id
+        }, merge=True)
+
+        return jsonify({"onboarding_url": account_link.url}), 200
+
+    except stripe.error.StripeError as e:
+        return jsonify({"error": "Stripe error: " + str(e)}), 500
+
+
+@app.route('/products/create', methods=['POST'])
 def create_product():
     try:
         data = request.json
-        products = data.get('products', [])
+        club_name = data.get("clubName")
+
+        # 🔍 Retrieve club’s Stripe account ID
+        club_ref = db.collection("clubs").document(club_name).get()
+        if not club_ref.exists:
+            return jsonify({"error": "Club not found"}), 404
+
+        club_data = club_ref.to_dict()
+        stripe_account_id = club_data.get("stripe_account_id")
+
+        if not stripe_account_id:
+            return jsonify({"error": "Club has not completed Stripe onboarding"}), 400
 
         created_products = []
 
-        for product in products:
-            # Step 1: Create a Product in Stripe
+        for product in data.get('products', []):
+            # ✅ Create the product inside the club’s Stripe Express account
             stripe_product = stripe.Product.create(
                 name=product['name'],
-                description="Automatically created product in Stripe",
+                description=f"Product for {club_name}",
+                stripe_account=stripe_account_id  # ✅ Uses Express account
             )
 
-            # Step 2: Create a Price for the Product in Stripe
             stripe_price = stripe.Price.create(
-                unit_amount=int(product['price'] * 100),  # Stripe requires price in cents
+                unit_amount=int(product['price'] * 100),
                 currency="eur",
                 product=stripe_product.id,
-                recurring={"interval": "month"} if product["installmentMonths"] else None,
+                stripe_account=stripe_account_id  # ✅ Ensures price is linked to club
             )
 
             created_products.append({
                 "name": product["name"],
                 "stripe_product_id": stripe_product.id,
                 "stripe_price_id": stripe_price.id,
-                "price": product["price"],
-                "installmentMonths": product["installmentMonths"]
+                "price": product["price"]
             })
 
         return jsonify({"message": "Products created successfully", "products": created_products}), 201
 
     except stripe.error.StripeError as e:
         return jsonify({"error": "Stripe error: " + str(e)}), 500
-    except KeyError as e:
-        return jsonify({"error": "Missing key: " + str(e)}), 400
-    except ValueError as e:
-        return jsonify({"error": "Invalid value: " + str(e)}), 400
 
 
 # Run the Flask app
