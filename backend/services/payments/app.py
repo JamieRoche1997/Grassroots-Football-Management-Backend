@@ -24,7 +24,9 @@ def load_secret(secret_name):
         secret_version = "latest"
 
         # Build the resource name of the secret version
-        secret_path = f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
+        secret_path = (
+            f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
+        )
         response = client.access_secret_version(request={"name": secret_path})
         secret_value = response.payload.data.decode("UTF-8")
 
@@ -56,6 +58,7 @@ except Exception as e:
 # Initialise Firestore
 db = firestore.client()
 
+
 @app.route("/stripe/status", methods=["GET"])
 def check_stripe_status():
     try:
@@ -71,9 +74,12 @@ def check_stripe_status():
         club_data = club_ref.to_dict()
         stripe_account_id = club_data.get("stripe_account_id")
 
-        return jsonify({
-            "stripe_account_id": stripe_account_id if stripe_account_id else None
-        }), 200
+        return (
+            jsonify(
+                {"stripe_account_id": stripe_account_id if stripe_account_id else None}
+            ),
+            200,
+        )
 
     except ValueError as e:
         return jsonify({"error": "Invalid value: " + str(e)}), 400
@@ -91,16 +97,27 @@ def create_connect_account():
         if club_ref.exists:
             club_data = club_ref.to_dict()
             if "stripe_account_id" in club_data:
-                return jsonify({"message": "Club already has a Stripe account", "stripe_account_id": club_data["stripe_account_id"]}), 200
+                return (
+                    jsonify(
+                        {
+                            "message": "Club already has a Stripe account",
+                            "stripe_account_id": club_data["stripe_account_id"],
+                        }
+                    ),
+                    200,
+                )
 
         # ✅ Create an Express Account for the club
         account = stripe.Account.create(
             type="express",
             country="IE",  # Change based on club location
             email=email,
-            capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
+            capabilities={
+                "card_payments": {"requested": True},
+                "transfers": {"requested": True},
+            },
             business_type="company",
-            business_profile={"name": club_name}
+            business_profile={"name": club_name},
         )
 
         # ✅ Generate onboarding link for club
@@ -108,13 +125,13 @@ def create_connect_account():
             account=account.id,
             refresh_url="http://localhost:5173/payments",  # Redirect if onboarding fails
             return_url="http://localhost:5173/payments",  # Redirect after success
-            type="account_onboarding"
+            type="account_onboarding",
         )
 
         # 🔍 Store Stripe Account ID in Firestore
-        db.collection("clubs").document(club_name).set({
-            "stripe_account_id": account.id
-        }, merge=True)
+        db.collection("clubs").document(club_name).set(
+            {"stripe_account_id": account.id}, merge=True
+        )
 
         return jsonify({"onboarding_url": account_link.url}), 200
 
@@ -122,7 +139,7 @@ def create_connect_account():
         return jsonify({"error": "Stripe error: " + str(e)}), 500
 
 
-@app.route('/products/create', methods=['POST'])
+@app.route("/products/create", methods=["POST"])
 def create_product():
     try:
         data = request.json
@@ -131,7 +148,10 @@ def create_product():
         division = data.get("division")
 
         if not club_name or not age_group or not division:
-            return jsonify({"error": "Club name, age group, and division are required"}), 400
+            return (
+                jsonify({"error": "Club name, age group, and division are required"}),
+                400,
+            )
 
         # 🔍 Retrieve club’s Stripe account ID
         club_ref = db.collection("clubs").document(club_name).get()
@@ -146,15 +166,18 @@ def create_product():
 
         created_products = []
 
-        for product in data.get('products', []):
+        for product in data.get("products", []):
             product_name = product["name"]
             price_amount = int(product["price"] * 100)  # Convert to cents
 
             # 🔍 Step 1: Check if product already exists in Firestore under the correct age group & division
             existing_product_ref = (
-                db.collection("clubs").document(club_name)
-                .collection("teams").document(f"{age_group}_{division}")  # 🏆 Store under the specific team
-                .collection("products").document(product_name)
+                db.collection("clubs")
+                .document(club_name)
+                .collection("teams")
+                .document(f"{age_group}_{division}")  # 🏆 Store under the specific team
+                .collection("products")
+                .document(product_name)
             )
             existing_product = existing_product_ref.get()
 
@@ -167,50 +190,70 @@ def create_product():
                 stripe_product = stripe.Product.create(
                     name=product_name,
                     description=f"Product for {club_name} - {age_group} {division}",
-                    metadata={"club": club_name, "ageGroup": age_group, "division": division},  # ✅ Save metadata
-                    stripe_account=stripe_account_id  # ✅ Uses Express account
+                    metadata={
+                        "club": club_name,
+                        "ageGroup": age_group,
+                        "division": division,
+                    },  # ✅ Save metadata
+                    stripe_account=stripe_account_id,  # ✅ Uses Express account
                 )
 
                 stripe_price = stripe.Price.create(
                     unit_amount=price_amount,
                     currency="eur",
                     product=stripe_product.id,
-                    metadata={"club": club_name, "ageGroup": age_group, "division": division},  # ✅ Save metadata
-                    stripe_account=stripe_account_id  # ✅ Ensures price is linked to club
+                    metadata={
+                        "club": club_name,
+                        "ageGroup": age_group,
+                        "division": division,
+                    },  # ✅ Save metadata
+                    stripe_account=stripe_account_id,  # ✅ Ensures price is linked to club
                 )
 
                 stripe_product_id = stripe_product.id
                 stripe_price_id = stripe_price.id
 
                 # ✅ Step 3: Store in Firestore under the correct team
-                existing_product_ref.set({
+                existing_product_ref.set(
+                    {
+                        "stripe_product_id": stripe_product_id,
+                        "stripe_price_id": stripe_price_id,
+                        "price": product["price"],
+                        "installmentMonths": product["installmentMonths"],
+                        "ageGroup": age_group,
+                        "division": division,
+                    }
+                )
+
+            created_products.append(
+                {
+                    "name": product_name,
                     "stripe_product_id": stripe_product_id,
                     "stripe_price_id": stripe_price_id,
                     "price": product["price"],
-                    "installmentMonths": product["installmentMonths"],
                     "ageGroup": age_group,
-                    "division": division
-                })
+                    "division": division,
+                }
+            )
 
-            created_products.append({
-                "name": product_name,
-                "stripe_product_id": stripe_product_id,
-                "stripe_price_id": stripe_price_id,
-                "price": product["price"],
-                "ageGroup": age_group,
-                "division": division
-            })
-
-        return jsonify({"message": "Products created successfully", "products": created_products}), 201
+        return (
+            jsonify(
+                {
+                    "message": "Products created successfully",
+                    "products": created_products,
+                }
+            ),
+            201,
+        )
 
     except stripe.error.StripeError as e:
         return jsonify({"error": "Stripe error: " + str(e)}), 500
     except Exception as e:
         logger.error("Unexpected error: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
-    
 
-@app.route('/products/list', methods=['GET'])
+
+@app.route("/products/list", methods=["GET"])
 def list_products():
     try:
         club_name = request.args.get("clubName")
@@ -218,7 +261,10 @@ def list_products():
         division = request.args.get("division")
 
         if not club_name or not age_group or not division:
-            return jsonify({"error": "Club name, age group, and division are required"}), 400
+            return (
+                jsonify({"error": "Club name, age group, and division are required"}),
+                400,
+            )
 
         # 🔍 Retrieve club’s Firestore document
         club_ref = db.collection("clubs").document(club_name).get()
@@ -227,32 +273,38 @@ def list_products():
 
         # 🔍 Retrieve all products for the specified age group & division
         products_ref = (
-            db.collection("clubs").document(club_name)
-            .collection("teams").document(f"{age_group}_{division}")
-            .collection("products").stream()
+            db.collection("clubs")
+            .document(club_name)
+            .collection("teams")
+            .document(f"{age_group}_{division}")
+            .collection("products")
+            .stream()
         )
 
         products = []
 
         for product in products_ref:
             product_data = product.to_dict()
-            products.append({
-                "id": product.id,
-                "name": product_data.get("name"),
-                "price": product_data.get("price"),
-                "installmentMonths": product_data.get("installmentMonths", None),
-                "stripe_product_id": product_data.get("stripe_product_id"),
-                "stripe_price_id": product_data.get("stripe_price_id"),
-                "ageGroup": product_data.get("ageGroup"),
-                "division": product_data.get("division"),
-            })
+            products.append(
+                {
+                    "id": product.id,
+                    "name": product_data.get("name"),
+                    "price": product_data.get("price"),
+                    "installmentMonths": product_data.get("installmentMonths", None),
+                    "stripe_product_id": product_data.get("stripe_product_id"),
+                    "stripe_price_id": product_data.get("stripe_price_id"),
+                    "ageGroup": product_data.get("ageGroup"),
+                    "division": product_data.get("division"),
+                }
+            )
 
         return jsonify({"products": products}), 200
 
     except Exception as e:
         logger.error("Unexpected error: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
-    
+
+
 @app.route("/stripe/create-checkout-session", methods=["POST"])
 def create_checkout_session():
     try:
@@ -284,22 +336,25 @@ def create_checkout_session():
                 return jsonify({"error": "Missing `priceId` in cart"}), 400
 
             # ✅ Use existing `stripe_price_id`
-            line_items.append({
-                "price": price_id,
-                "quantity": quantity,
-            })
+            line_items.append(
+                {
+                    "price": price_id,
+                    "quantity": quantity,
+                }
+            )
 
         # ✅ Create Stripe Checkout Session (For Connected Accounts)
         session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
             mode="payment",
             success_url="http://localhost:5173/payments/success?session_id={CHECKOUT_SESSION_ID}",
             cancel_url="http://localhost:5173/payments/cancel",
             line_items=line_items,
-            stripe_account=stripe_account_id,  # ✅ Uses Club's Stripe Express Account
-            transfer_data={  # ✅ Ensures payment is sent to the club
-                "destination": stripe_account_id
-            }
+            stripe_account=stripe_account_id,
+            payment_intent_data={
+                "transfer_data": {
+                    "destination": stripe_account_id  
+                }
+            },
         )
 
         return jsonify({"checkoutUrl": session.url})
@@ -351,28 +406,28 @@ def handle_successful_payment(session):
             user_data = doc.to_dict()
 
             # ✅ Update user document to mark as paid
-            db.collection("users").document(user_id).update({
-                "membershipPaid": True,
-                "lastPaymentDate": fs.SERVER_TIMESTAMP
-            })
+            db.collection("users").document(user_id).update(
+                {"membershipPaid": True, "lastPaymentDate": fs.SERVER_TIMESTAMP}
+            )
 
             # ✅ Add payment record in Firestore
             payment_ref = db.collection("payments").document()
-            payment_ref.set({
-                "userId": user_id,
-                "email": customer_email,
-                "amount": session["amount_total"] / 100,  # Convert from cents
-                "currency": session["currency"],
-                "status": "completed",
-                "club": club_name,
-                "ageGroup": age_group,
-                "division": division,
-                "timestamp": fs.SERVER_TIMESTAMP
-            })
+            payment_ref.set(
+                {
+                    "userId": user_id,
+                    "email": customer_email,
+                    "amount": session["amount_total"] / 100,  # Convert from cents
+                    "currency": session["currency"],
+                    "status": "completed",
+                    "club": club_name,
+                    "ageGroup": age_group,
+                    "division": division,
+                    "timestamp": fs.SERVER_TIMESTAMP,
+                }
+            )
 
     except Exception as e:
         logger.error("Error processing payment: %s", str(e))
-
 
 
 # Run the Flask app
