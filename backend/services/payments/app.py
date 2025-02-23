@@ -181,7 +181,7 @@ def create_product():
             if existing_product.exists:
                 existing_data = existing_product.to_dict()
                 stripe_product_id = existing_data["stripe_product_id"]
-                stripe_stripe_price_id = existing_data["stripe_stripe_price_id"]
+                stripe_price_id = existing_data["stripe_price_id"]
             else:
                 # 🆕 Step 1: Create Stripe Product
                 stripe_product = stripe.Product.create(
@@ -227,13 +227,13 @@ def create_product():
                     )
 
                 stripe_product_id = stripe_product.id
-                stripe_stripe_price_id = stripe_price.id
+                stripe_price_id = stripe_price.id
 
                 # ✅ Step 3: Store in Firestore under the correct team
                 existing_product_ref.set(
                     {
                         "stripe_product_id": stripe_product_id,
-                        "stripe_stripe_price_id": stripe_stripe_price_id,
+                        "stripe_price_id": stripe_price_id,
                         "price": total_price,
                         "installmentMonths": installment_months,
                         "ageGroup": age_group,
@@ -245,7 +245,7 @@ def create_product():
                 {
                     "name": product_name,
                     "stripe_product_id": stripe_product_id,
-                    "stripe_stripe_price_id": stripe_stripe_price_id,
+                    "stripe_price_id": stripe_price_id,
                     "price": total_price,
                     "ageGroup": age_group,
                     "division": division,
@@ -301,7 +301,7 @@ def list_products():
                     "price": product_data.get("price"),
                     "installmentMonths": product_data.get("installmentMonths", None),
                     "stripe_product_id": product_data.get("stripe_product_id"),
-                    "stripe_stripe_price_id": product_data.get("stripe_stripe_price_id"),
+                    "stripe_price_id": product_data.get("stripe_price_id"),
                     "ageGroup": product_data.get("ageGroup"),
                     "division": product_data.get("division"),
                 }
@@ -342,11 +342,11 @@ def create_checkout_session():
         checkout_mode = "payment"  # Default to one-time payments
 
         for item in cart_items:
-            stripe_price_id = item.get("stripe_stripe_price_id")  # ✅ Extract `stripe_stripe_price_id`
+            stripe_price_id = item.get("stripe_price_id")  # ✅ Extract `stripe_price_id`
             quantity = item.get("quantity", 1)
 
             if not stripe_price_id:
-                return jsonify({"error": "Missing `stripe_stripe_price_id` in cart"}), 400
+                return jsonify({"error": "Missing `stripe_price_id` in cart"}), 400
 
             # 🔍 Retrieve product details from Firestore to check for installments
             product_ref = db.collection("clubs").document(club_name).collection("teams").document(
