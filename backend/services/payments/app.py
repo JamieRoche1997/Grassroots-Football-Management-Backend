@@ -142,24 +142,47 @@ def create_product():
         created_products = []
 
         for product in data.get('products', []):
-            # ✅ Create the product inside the club’s Stripe Express account
-            stripe_product = stripe.Product.create(
-                name=product['name'],
-                description=f"Product for {club_name}",
-                stripe_account=stripe_account_id  # ✅ Uses Express account
-            )
+            product_name = product["name"]
+            price_amount = int(product["price"] * 100)  # Convert to cents
 
-            stripe_price = stripe.Price.create(
-                unit_amount=int(product['price'] * 100),
-                currency="eur",
-                product=stripe_product.id,
-                stripe_account=stripe_account_id  # ✅ Ensures price is linked to club
-            )
+            # 🔍 Step 1: Check if product already exists in Firestore
+            existing_product_ref = db.collection("clubs").document(club_name).collection("products").document(product_name)
+            existing_product = existing_product_ref.get()
+
+            if existing_product.exists:
+                existing_data = existing_product.to_dict()
+                stripe_product_id = existing_data["stripe_product_id"]
+                stripe_price_id = existing_data["stripe_price_id"]
+            else:
+                # 🆕 Step 2: Create a new product if it doesn’t exist
+                stripe_product = stripe.Product.create(
+                    name=product_name,
+                    description=f"Product for {club_name}",
+                    stripe_account=stripe_account_id  # ✅ Uses Express account
+                )
+
+                stripe_price = stripe.Price.create(
+                    unit_amount=price_amount,
+                    currency="eur",
+                    product=stripe_product.id,
+                    stripe_account=stripe_account_id  # ✅ Ensures price is linked to club
+                )
+
+                stripe_product_id = stripe_product.id
+                stripe_price_id = stripe_price.id
+
+                # ✅ Step 3: Store in Firestore to prevent future duplication
+                existing_product_ref.set({
+                    "stripe_product_id": stripe_product_id,
+                    "stripe_price_id": stripe_price_id,
+                    "price": product["price"],
+                    "installmentMonths": product["installmentMonths"]
+                })
 
             created_products.append({
-                "name": product["name"],
-                "stripe_product_id": stripe_product.id,
-                "stripe_price_id": stripe_price.id,
+                "name": product_name,
+                "stripe_product_id": stripe_product_id,
+                "stripe_price_id": stripe_price_id,
                 "price": product["price"]
             })
 
