@@ -364,7 +364,7 @@ def create_checkout_session():
 @app.route("/stripe/webhook", methods=["POST"])
 def stripe_webhook():
     payload = request.get_data(as_text=True)
-    sig_header = request.headers.get("Stripe-Signature")
+    sig_header = request.headers.get("stripe-signature")
     endpoint_secret = load_secret("stripe-webhook-secret")  # ✅ Store securely
 
     try:
@@ -386,11 +386,22 @@ def stripe_webhook():
 def handle_successful_payment(session):
     """Process successful payment, update Firestore, and notify the user."""
     try:
-        customer_email = session["customer_email"]  # ✅ Get user email
-        metadata = session["metadata"]  # ✅ Retrieve stored metadata
+        # ✅ Get customer email from customer_details
+        customer_email = session.get("customer_email") or session.get("customer_details", {}).get("email")
+
+        # ✅ Retrieve metadata
+        metadata = session.get("metadata", {})
         club_name = metadata.get("clubName")
         age_group = metadata.get("ageGroup")
         division = metadata.get("division")
+
+        if not customer_email:
+            logger.error("Customer email is missing from Stripe session.")
+            return
+        
+        if not club_name:
+            logger.error("Missing required metadata: clubName")
+            return
 
         # ✅ Find user in Firestore by email
         user_ref = db.collection("users").where("email", "==", customer_email).limit(1)
@@ -398,31 +409,31 @@ def handle_successful_payment(session):
 
         for doc in user_docs:
             user_id = doc.id  # Get the document ID
-            user_data = doc.to_dict()
 
             # ✅ Update user document to mark as paid
-            db.collection("users").document(user_id).update(
-                {"membershipPaid": True, "lastPaymentDate": fs.SERVER_TIMESTAMP}
-            )
+            db.collection("users").document(user_id).update({
+                "membershipPaid": True,
+                "lastPaymentDate": fs.SERVER_TIMESTAMP
+            })
 
             # ✅ Add payment record in Firestore
             payment_ref = db.collection("payments").document()
-            payment_ref.set(
-                {
-                    "userId": user_id,
-                    "email": customer_email,
-                    "amount": session["amount_total"] / 100,  # Convert from cents
-                    "currency": session["currency"],
-                    "status": "completed",
-                    "club": club_name,
-                    "ageGroup": age_group,
-                    "division": division,
-                    "timestamp": fs.SERVER_TIMESTAMP,
-                }
-            )
+            payment_ref.set({
+                "userId": user_id,
+                "email": customer_email,
+                "amount": session["amount_total"] / 100,  # Convert from cents
+                "currency": session["currency"],
+                "status": "completed",
+                "club": club_name,
+                "ageGroup": age_group,
+                "division": division,
+                "timestamp": fs.SERVER_TIMESTAMP
+            })
+
+            logger.info(f"✅ Payment successfully processed for {customer_email}")
 
     except Exception as e:
-        logger.error("Error processing payment: %s", str(e))
+        logger.error(f"Error processing payment: {str(e)}")
 
 
 # Run the Flask app
