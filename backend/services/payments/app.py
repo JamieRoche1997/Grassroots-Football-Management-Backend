@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify
 import stripe
 from firebase_admin import credentials, firestore, initialize_app
 from flask_cors import CORS
-from google.cloud import secretmanager
+from google.cloud import firestore as fs, secretmanager
 
 # Initialise Flask app
 app = Flask(__name__)
@@ -252,6 +252,125 @@ def list_products():
     except Exception as e:
         logger.error("Unexpected error: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
+    
+@app.route("/stripe/create-checkout-session", methods=["POST"])
+def create_checkout_session():
+    try:
+        data = request.json
+        cart_items = data.get("cart", [])
+        club_name = data.get("clubName")  # ✅ Ensure we know which club is making the sale
+
+        if not club_name or not cart_items:
+            return jsonify({"error": "Club name and cart items are required"}), 400
+
+        # ✅ Retrieve club’s Stripe Express account ID from Firestore
+        club_ref = db.collection("clubs").document(club_name).get()
+        if not club_ref.exists:
+            return jsonify({"error": "Club not found"}), 404
+
+        club_data = club_ref.to_dict()
+        stripe_account_id = club_data.get("stripe_account_id")
+
+        if not stripe_account_id:
+            return jsonify({"error": "Club has not completed Stripe onboarding"}), 400
+
+        # ✅ Create line items for Stripe Checkout
+        line_items = [
+            {
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {"name": item["product"]["name"]},
+                    "unit_amount": int(item["product"]["price"] * 100),  # Convert to cents
+                },
+                "quantity": item["quantity"],
+            }
+            for item in cart_items
+        ]
+
+        # ✅ Create Stripe Checkout Session (For Connected Accounts)
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="payment",
+            success_url="http://localhost:5173/payments/success?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url="http://localhost:5173/payments/cancel",
+            line_items=line_items,
+            stripe_account=stripe_account_id,  # ✅ Uses Club's Stripe Express Account
+            transfer_data={  # ✅ Ensures payment is sent to the club
+                "destination": stripe_account_id
+            }
+        )
+
+        return jsonify({"checkoutUrl": session.url})
+
+    except stripe.error.StripeError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        logger.error("Unexpected error: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route("/stripe/webhook", methods=["POST"])
+def stripe_webhook():
+    payload = request.get_data(as_text=True)
+    sig_header = request.headers.get("Stripe-Signature")
+    endpoint_secret = load_secret("stripe-webhook-secret")  # ✅ Store securely
+
+    try:
+        # ✅ Verify the event came from Stripe
+        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+    except ValueError:
+        return jsonify({"error": "Invalid payload"}), 400
+    except stripe.error.SignatureVerificationError:
+        return jsonify({"error": "Invalid signature"}), 400
+
+    # ✅ Handle the event type
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        handle_successful_payment(session)  # ✅ Process the payment
+
+    return jsonify({"status": "success"}), 200
+
+
+def handle_successful_payment(session):
+    """Process successful payment, update Firestore, and notify the user."""
+    try:
+        customer_email = session["customer_email"]  # ✅ Get user email
+        metadata = session["metadata"]  # ✅ Retrieve stored metadata
+        club_name = metadata.get("clubName")
+        age_group = metadata.get("ageGroup")
+        division = metadata.get("division")
+
+        # ✅ Find user in Firestore by email
+        user_ref = db.collection("users").where("email", "==", customer_email).limit(1)
+        user_docs = user_ref.stream()
+
+        for doc in user_docs:
+            user_id = doc.id  # Get the document ID
+            user_data = doc.to_dict()
+
+            # ✅ Update user document to mark as paid
+            db.collection("users").document(user_id).update({
+                "membershipPaid": True,
+                "lastPaymentDate": fs.SERVER_TIMESTAMP
+            })
+
+            # ✅ Add payment record in Firestore
+            payment_ref = db.collection("payments").document()
+            payment_ref.set({
+                "userId": user_id,
+                "email": customer_email,
+                "amount": session["amount_total"] / 100,  # Convert from cents
+                "currency": session["currency"],
+                "status": "completed",
+                "club": club_name,
+                "ageGroup": age_group,
+                "division": division,
+                "timestamp": fs.SERVER_TIMESTAMP
+            })
+
+    except Exception as e:
+        logger.error("Error processing payment: %s", str(e))
+
 
 
 # Run the Flask app

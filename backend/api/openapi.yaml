@@ -1546,15 +1546,12 @@ paths:
               clubName:
                 type: string
                 description: The name of the club associated with this product.
-                example: "Cobh Ramblers"
               ageGroup:
                 type: string
                 description: The age group of the team listing the product.
-                example: "Under 18"
               division:
                 type: string
                 description: The division of the team listing the product.
-                example: "Premier Division"
               products:
                 type: array
                 items:
@@ -1565,53 +1562,23 @@ paths:
                   properties:
                     name:
                       type: string
-                      description: Name of the product
-                      example: "Jersey"
+                      description: Name of the product.
                     price:
                       type: number
                       format: float
-                      description: Base price of the product in EUR
-                      example: 50.00
+                      description: Base price of the product in EUR.
                     installmentMonths:
                       type: integer
-                      description: Number of months for installment plan (null for full payment)
-                      example: 6
+                      description: Number of months for installment plan (null for full payment).
       responses:
         '201':
           description: Product created successfully in the club's Stripe Express account.
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Products created successfully"
-              products:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                      description: Name of the product
-                    stripe_product_id:
-                      type: string
-                      description: Stripe product ID in the club's Express account.
-                    stripe_price_id:
-                      type: string
-                      description: Stripe price ID in the club's Express account.
-                    price:
-                      type: number
-                      format: float
-                      description: Price of the product
-                    installmentMonths:
-                      type: integer
-                      description: Installment months (if applicable)
         '400':
-          description: Missing or invalid request data
+          description: Missing or invalid request data.
         '500':
-          description: Internal server error or Stripe API failure
+          description: Internal server error or Stripe API failure.
 
-/products/list:
+  /products/list:
     get:
       x-google-backend:
         address: https://microservice-payments-180320540339.europe-west2.run.app/products/list
@@ -1670,3 +1637,96 @@ paths:
           description: Missing or invalid request data.
         '500':
           description: Internal server error or Stripe API failure.
+
+  /stripe/create-checkout-session:
+    post:
+      x-google-backend:
+        address: https://microservice-payments-180320540339.europe-west2.run.app/stripe/create-checkout-session
+      summary: Create a Stripe Checkout session
+      description: Creates a Stripe Checkout session for a club's Stripe Express account.
+      operationId: createCheckoutSession
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Checkout session details, including the cart and club information.
+          required: true
+          schema:
+            type: object
+            required:
+              - clubName
+              - cart
+            properties:
+              clubName:
+                type: string
+                description: The name of the club processing the payment.
+                example: "Cobh Ramblers"
+              cart:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - product
+                    - quantity
+                  properties:
+                    product:
+                      type: object
+                      required:
+                        - name
+                        - price
+                      properties:
+                        name:
+                          type: string
+                          description: Name of the product being purchased.
+                          example: "Jersey"
+                        price:
+                          type: number
+                          format: float
+                          description: Price of the product in EUR.
+                          example: 50.00
+                    quantity:
+                      type: integer
+                      description: Quantity of the product purchased.
+                      example: 2
+      responses:
+        '200':
+          description: Checkout session created successfully.
+          schema:
+            type: object
+            properties:
+              checkoutUrl:
+                type: string
+                description: The Stripe-hosted checkout URL.
+                example: "https://checkout.stripe.com/pay/cs_test_123456"
+        '400':
+          description: Missing or invalid request data.
+        '500':
+          description: Internal server error or Stripe API failure.
+
+  /stripe/webhook:
+    post:
+      x-google-backend:
+        address: https://microservice-payments-180320540339.europe-west2.run.app/stripe/webhook
+      summary: Stripe webhook for processing payments
+      description: Handles Stripe webhook events such as successful payments.
+      operationId: stripeWebhook
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: Stripe-Signature
+          description: Stripe's signature for verifying webhook authenticity.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Webhook received and processed successfully.
+        '400':
+          description: Invalid webhook signature or request payload.
+        '500':
+          description: Internal server error.
