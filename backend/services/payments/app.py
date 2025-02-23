@@ -350,10 +350,10 @@ def create_checkout_session():
 
             # 🔍 Retrieve product details from Firestore to check for installments
             product_ref = db.collection("clubs").document(club_name).collection("teams").document(
-                f"{age_group}_{division}").collection("products").document(item.get("stripe_product_id")).get()
+                f"{age_group}_{division}").collection("products").document(item.get("id")).get()
 
             if not product_ref.exists:
-                return jsonify({"error": f"Product {item.get('productId')} not found"}), 400
+                return jsonify({"error": f"Product {item.get('id')} not found"}), 400
 
             product_data = product_ref.to_dict()
             installment_months = product_data.get("installmentMonths")
@@ -463,10 +463,10 @@ def handle_successful_payment(session):
                 }
             )
 
-            logger.info("✅ Payment successfully processed for %s", customer_email)
+            logger.info(f"✅ Payment successfully processed for {customer_email}")
 
     except Exception as e:
-        logger.error("Error processing payment: %s", str(e))
+        logger.error(f"Error processing payment: {str(e)}")
 
 
 # Run the Flask app
