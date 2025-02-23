@@ -181,7 +181,7 @@ def create_product():
             if existing_product.exists:
                 existing_data = existing_product.to_dict()
                 stripe_product_id = existing_data["stripe_product_id"]
-                stripe_price_id = existing_data["stripe_price_id"]
+                stripe_stripe_price_id = existing_data["stripe_stripe_price_id"]
             else:
                 # 🆕 Step 1: Create Stripe Product
                 stripe_product = stripe.Product.create(
@@ -227,13 +227,13 @@ def create_product():
                     )
 
                 stripe_product_id = stripe_product.id
-                stripe_price_id = stripe_price.id
+                stripe_stripe_price_id = stripe_price.id
 
                 # ✅ Step 3: Store in Firestore under the correct team
                 existing_product_ref.set(
                     {
                         "stripe_product_id": stripe_product_id,
-                        "stripe_price_id": stripe_price_id,
+                        "stripe_stripe_price_id": stripe_stripe_price_id,
                         "price": total_price,
                         "installmentMonths": installment_months,
                         "ageGroup": age_group,
@@ -245,7 +245,7 @@ def create_product():
                 {
                     "name": product_name,
                     "stripe_product_id": stripe_product_id,
-                    "stripe_price_id": stripe_price_id,
+                    "stripe_stripe_price_id": stripe_stripe_price_id,
                     "price": total_price,
                     "ageGroup": age_group,
                     "division": division,
@@ -301,7 +301,7 @@ def list_products():
                     "price": product_data.get("price"),
                     "installmentMonths": product_data.get("installmentMonths", None),
                     "stripe_product_id": product_data.get("stripe_product_id"),
-                    "stripe_price_id": product_data.get("stripe_price_id"),
+                    "stripe_stripe_price_id": product_data.get("stripe_stripe_price_id"),
                     "ageGroup": product_data.get("ageGroup"),
                     "division": product_data.get("division"),
                 }
@@ -342,18 +342,18 @@ def create_checkout_session():
         checkout_mode = "payment"  # Default to one-time payments
 
         for item in cart_items:
-            price_id = item.get("priceId")  # ✅ Extract `priceId`
+            stripe_price_id = item.get("stripe_stripe_price_id")  # ✅ Extract `stripe_stripe_price_id`
             quantity = item.get("quantity", 1)
 
-            if not price_id:
-                return jsonify({"error": "Missing `priceId` in cart"}), 400
+            if not stripe_price_id:
+                return jsonify({"error": "Missing `stripe_stripe_price_id` in cart"}), 400
 
             # 🔍 Retrieve product details from Firestore to check for installments
             product_ref = db.collection("clubs").document(club_name).collection("teams").document(
-                f"{age_group}_{division}").collection("products").document(item.get("productId")).get()
+                f"{age_group}_{division}").collection("products").document(item.get("stripe_product_id")).get()
 
             if not product_ref.exists:
-                return jsonify({"error": f"Product {item.get('productId')} not found"}), 400
+                return jsonify({"error": f"Product {item.get('stripe_product_id')} not found"}), 400
 
             product_data = product_ref.to_dict()
             installment_months = product_data.get("installmentMonths")
@@ -363,7 +363,7 @@ def create_checkout_session():
                 checkout_mode = "subscription"
 
             line_items.append({
-                "price": price_id,
+                "price": stripe_price_id,
                 "quantity": quantity,
             })
 
@@ -467,6 +467,35 @@ def handle_successful_payment(session):
 
     except Exception as e:
         logger.error(f"Error processing payment: {str(e)}")
+
+
+@app.route("/stripe/verify-payment", methods=["GET"])
+def verify_payment():
+    try:
+        session_id = request.args.get("session_id")
+        if not session_id:
+            return jsonify({"error": "Missing session_id"}), 400
+
+        # ✅ Retrieve Checkout Session from Stripe
+        session = stripe.checkout.Session.retrieve(session_id)
+
+        # ✅ Ensure the payment was successful
+        if session["payment_status"] != "paid":
+            return jsonify({"error": "Payment not completed"}), 400
+
+        return jsonify({
+            "message": "Payment verified successfully",
+            "amount_total": session["amount_total"] / 100,  # Convert cents to EUR
+            "currency": session["currency"],
+            "email": session["customer_details"]["email"] if session.get("customer_details") else None,
+            "session_id": session["id"],
+        }), 200
+
+    except stripe.error.StripeError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        logger.error("Error verifying payment: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # Run the Flask app

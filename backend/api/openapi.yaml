@@ -1780,3 +1780,45 @@ paths:
           description: Invalid webhook signature or request payload.
         '500':
           description: Internal server error.
+
+  /stripe/verify-payment:
+    get:
+      x-google-backend:
+        address: https://microservice-payments-180320540339.europe-west2.run.app/stripe/verify-payment
+      summary: Verify Stripe payment session
+      description: Retrieves the Stripe Checkout session details and confirms if the payment was successful.
+      operationId: verifyPayment
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: session_id
+          description: The Stripe session ID received after payment.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Payment successfully verified.
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Confirmation message.
+              amount_total:
+                type: number
+                format: float
+                description: Total payment amount in EUR.
+              currency:
+                type: string
+                description: Currency used for payment.
+              email:
+                type: string
+                description: Email of the customer.
+              session_id:
+                type: string
+                description: Stripe session ID.
+        '400':
+          description: Payment not completed or invalid session.
+        '500':
+          description: Internal server error.
