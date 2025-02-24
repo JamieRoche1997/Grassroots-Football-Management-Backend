@@ -123,8 +123,8 @@ def create_connect_account():
         # ✅ Generate onboarding link for club
         account_link = stripe.AccountLink.create(
             account=account.id,
-            refresh_url="http://localhost:5173/payments",  # Redirect if onboarding fails
-            return_url="http://localhost:5173/payments",  # Redirect after success
+            refresh_url="https://grassroots-football-management.web.app/payments",  # Redirect if onboarding fails
+            return_url="https://grassroots-football-management.web.app/payments",  # Redirect after success
             type="account_onboarding",
         )
 
@@ -370,8 +370,8 @@ def create_checkout_session():
         # ✅ Create Stripe Checkout Session (Handles both one-time & subscriptions)
         session = stripe.checkout.Session.create(
             mode=checkout_mode,  # ✅ Dynamically set to "payment" or "subscription"
-            success_url="http://localhost:5173/payments/success?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url="http://localhost:5173/payments/cancel",
+            success_url="https://grassroots-football-management.web.app/payments/success",
+            cancel_url="https://grassroots-football-management.web.app/payments/cancel",
             line_items=line_items,
             stripe_account=stripe_account_id,
             metadata={
@@ -467,35 +467,6 @@ def handle_successful_payment(session):
 
     except Exception as e:
         logger.error("Error processing payment: %s", str(e))
-
-
-@app.route("/stripe/verify-payment", methods=["GET"])
-def verify_payment():
-    try:
-        session_id = request.args.get("session_id")
-        if not session_id:
-            return jsonify({"error": "Missing session_id"}), 400
-
-        # ✅ Retrieve Checkout Session from Stripe
-        session = stripe.checkout.Session.retrieve(session_id)
-
-        # ✅ Ensure the payment was successful
-        if session["payment_status"] != "paid":
-            return jsonify({"error": "Payment not completed"}), 400
-
-        return jsonify({
-            "message": "Payment verified successfully",
-            "amount_total": session["amount_total"] / 100,  # Convert cents to EUR
-            "currency": session["currency"],
-            "email": session["customer_details"]["email"] if session.get("customer_details") else None,
-            "session_id": session["id"],
-        }), 200
-
-    except stripe.error.StripeError as e:
-        return jsonify({"error": str(e)}), 500
-    except Exception as e:
-        logger.error("Error verifying payment: %s", str(e))
-        return jsonify({"error": "Internal server error"}), 500
 
 
 # Run the Flask app
