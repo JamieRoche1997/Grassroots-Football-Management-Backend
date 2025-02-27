@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from flask import Flask, request, jsonify
+import time
 import stripe
 from firebase_admin import credentials, firestore, initialize_app
 from flask_cors import CORS
@@ -148,7 +149,10 @@ def create_product():
         division = data.get("division")
 
         if not club_name or not age_group or not division:
-            return jsonify({"error": "Club name, age group, and division are required"}), 400
+            return (
+                jsonify({"error": "Club name, age group, and division are required"}),
+                400,
+            )
 
         # 🔍 Retrieve club’s Stripe account ID
         club_ref = db.collection("clubs").document(club_name).get()
@@ -167,12 +171,14 @@ def create_product():
             product_name = product["name"]
             total_price = float(product["price"])
             installment_months = product.get("installmentMonths")
+            category = product.get("category", "other")
+            is_membership = category == "membership"
 
             existing_product_ref = (
                 db.collection("clubs")
                 .document(club_name)
                 .collection("teams")
-                .document(f"{age_group}_{division}")  # 🏆 Store under the specific team
+                .document(f"{age_group}_{division}")
                 .collection("products")
                 .document(product_name)
             )
@@ -191,37 +197,44 @@ def create_product():
                         "club": club_name,
                         "ageGroup": age_group,
                         "division": division,
+                        "category": category,  # ✅ Store category in Stripe metadata
+                        "isMembership": str(
+                            is_membership
+                        ).lower(),  # ✅ Store as string (Stripe metadata only supports strings)
                     },
-                    stripe_account=stripe_account_id,  # ✅ Uses Express account
+                    stripe_account=stripe_account_id,
                 )
 
                 if installment_months and installment_months > 1:
                     # 🛠️ Step 2a: Create a recurring price for installments
-                    monthly_price = round(total_price / installment_months, 2)  # Divide total over months
+                    monthly_price = round(total_price / installment_months, 2)
                     stripe_price = stripe.Price.create(
-                        unit_amount=int(monthly_price * 100),  # Convert to cents
+                        unit_amount=int(monthly_price * 100),
                         currency="eur",
-                        recurring={"interval": "month"},  # Subscription-based pricing
+                        recurring={"interval": "month"},
                         product=stripe_product.id,
                         metadata={
                             "club": club_name,
                             "ageGroup": age_group,
                             "division": division,
                             "installmentMonths": installment_months,
+                            "category": category,  # ✅ Store category in Stripe metadata
+                            "isMembership": str(is_membership).lower(),
                         },
                         stripe_account=stripe_account_id,
                     )
-
                 else:
                     # 💰 Step 2b: Create a one-time price
                     stripe_price = stripe.Price.create(
-                        unit_amount=int(total_price * 100),  # Convert to cents
+                        unit_amount=int(total_price * 100),
                         currency="eur",
                         product=stripe_product.id,
                         metadata={
                             "club": club_name,
                             "ageGroup": age_group,
                             "division": division,
+                            "category": category,  # ✅ Store category in Stripe metadata
+                            "isMembership": str(is_membership).lower(),
                         },
                         stripe_account=stripe_account_id,
                     )
@@ -232,12 +245,15 @@ def create_product():
                 # ✅ Step 3: Store in Firestore under the correct team
                 existing_product_ref.set(
                     {
+                        "name": product_name,
                         "stripe_product_id": stripe_product_id,
                         "stripe_price_id": stripe_price_id,
                         "price": total_price,
                         "installmentMonths": installment_months,
                         "ageGroup": age_group,
                         "division": division,
+                        "category": category,  # ✅ Store category in Firestore
+                        "isMembership": is_membership,  # ✅ Store membership flag
                     }
                 )
 
@@ -250,10 +266,20 @@ def create_product():
                     "ageGroup": age_group,
                     "division": division,
                     "installmentMonths": installment_months,
+                    "category": category,  # ✅ Include in response
+                    "isMembership": is_membership,  # ✅ Include in response
                 }
             )
 
-        return jsonify({"message": "Products created successfully", "products": created_products}), 201
+        return (
+            jsonify(
+                {
+                    "message": "Products created successfully",
+                    "products": created_products,
+                }
+            ),
+            201,
+        )
 
     except stripe.error.StripeError as e:
         return jsonify({"error": "Stripe error: " + str(e)}), 500
@@ -300,6 +326,8 @@ def list_products():
                     "name": product_data.get("name"),
                     "price": product_data.get("price"),
                     "installmentMonths": product_data.get("installmentMonths", None),
+                    "category": product_data.get("category"),
+                    "isMembership": product_data.get("isMembership"),
                     "stripe_product_id": product_data.get("stripe_product_id"),
                     "stripe_price_id": product_data.get("stripe_price_id"),
                     "ageGroup": product_data.get("ageGroup"),
@@ -340,47 +368,68 @@ def create_checkout_session():
 
         line_items = []
         checkout_mode = "payment"  # Default to one-time payments
+        has_subscription = False
+        installment_months = None
 
         for item in cart_items:
-            price_id = item.get("priceId")  # ✅ Extract `priceId`
+            price_id = item.get("priceId")
             quantity = item.get("quantity", 1)
 
             if not price_id:
                 return jsonify({"error": "Missing `priceId` in cart"}), 400
 
-            # 🔍 Retrieve product details from Firestore to check for installments
-            product_ref = db.collection("clubs").document(club_name).collection("teams").document(
-                f"{age_group}_{division}").collection("products").document(item.get("id")).get()
+            # 🔍 Retrieve product details from Firestore
+            product_ref = (
+                db.collection("clubs")
+                .document(club_name)
+                .collection("teams")
+                .document(f"{age_group}_{division}")
+                .collection("products")
+                .document(item.get("id"))
+                .get()
+            )
 
             if not product_ref.exists:
                 return jsonify({"error": f"Product {item.get('id')} not found"}), 400
 
             product_data = product_ref.to_dict()
-            installment_months = product_data.get("installmentMonths")
+            item_installment_months = product_data.get("installmentMonths")
 
             # 🛠️ If product has installments, switch to subscription mode
-            if installment_months and installment_months > 1:
+            if item_installment_months and item_installment_months > 1:
                 checkout_mode = "subscription"
+                has_subscription = True
+                installment_months = (
+                    item_installment_months  # Track installment duration
+                )
 
-            line_items.append({
-                "price": price_id,
-                "quantity": quantity,
-            })
+            line_items.append(
+                {
+                    "price": price_id,
+                    "quantity": quantity,
+                }
+            )
 
-        # ✅ Create Stripe Checkout Session (Handles both one-time & subscriptions)
-        session = stripe.checkout.Session.create(
-            mode=checkout_mode,  # ✅ Dynamically set to "payment" or "subscription"
-            success_url="https://grassroots-football-management.web.app/payments/success",
-            cancel_url="https://grassroots-football-management.web.app/payments/cancel",
-            line_items=line_items,
-            stripe_account=stripe_account_id,
-            metadata={
+        # ✅ Create Stripe Checkout Session
+        session_data = {
+            "mode": checkout_mode,
+            "success_url": "https://grassroots-football-management.web.app/payments/success",
+            "cancel_url": "https://grassroots-football-management.web.app/payments/cancel",
+            "line_items": line_items,
+            "stripe_account": stripe_account_id,
+            "metadata": {
                 "clubName": club_name,
                 "ageGroup": age_group,
                 "division": division,
                 "customerEmail": customer_email,
-            }
-        )
+                "isSubscription": "true" if has_subscription else "false",
+                "installmentMonths": (
+                    str(installment_months) if has_subscription else "0"
+                ),
+            },
+        }
+
+        session = stripe.checkout.Session.create(**session_data)
 
         return jsonify({"checkoutUrl": session.url})
 
@@ -409,14 +458,90 @@ def stripe_webhook():
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         handle_successful_payment(session)  # ✅ Process the payment
+        handle_subscription(session)  # ✅ Handle subscription payments
 
     return jsonify({"status": "success"}), 200
+
+
+def handle_subscription(session):
+    """Handles subscription-based purchases and creates a Subscription Schedule."""
+
+    # ✅ Extract session ID
+    session_id = session.get("id")
+    club_name = session.get("metadata", {}).get("clubName")
+
+    # ✅ Retrieve club’s Stripe Express account ID
+    club_ref = db.collection("clubs").document(club_name).get()
+    if not club_ref.exists:
+        return jsonify({"error": "Club not found"}), 404
+
+    club_data = club_ref.to_dict()
+    stripe_account_id = club_data.get("stripe_account_id")
+
+    try:
+        # ✅ Fetch line items from the connected account
+        line_items = stripe.checkout.Session.list_line_items(
+            session_id, stripe_account=stripe_account_id
+        )["data"]
+
+        # ✅ Extract subscription details
+        if (
+            session.get("mode") == "subscription"
+            and session.get("metadata", {}).get("isSubscription") == "true"
+        ):
+            subscription_id = session.get("subscription")
+            installment_months = int(
+                session.get("metadata", {}).get("installmentMonths", "0")
+            )
+
+            for item in line_items:
+                price_id = item.get("price", "")
+                quantity = item.get("quantity", 1)
+
+            if subscription_id and installment_months > 0:
+                # ✅ Create Subscription Schedule on the correct connected account
+                subscription_schedule = stripe.SubscriptionSchedule.create(
+                    from_subscription=subscription_id,
+                    stripe_account=stripe_account_id,
+
+                )
+
+                subscription_schedule_id = subscription_schedule["id"]
+                start_date = subscription_schedule["phases"][0]["start_date"]
+
+                print(
+                    f"✅ Subscription Schedule created for {subscription_schedule_id} on {stripe_account_id}"
+                )
+
+                stripe.SubscriptionSchedule.modify(
+                    subscription_schedule_id,
+                    end_behavior="cancel",
+                    phases=[
+                        {
+                            "start_date": start_date,
+                            "items": [
+                                {
+                                    "price": price_id,
+                                    "quantity": quantity,
+                                }
+                            ],
+                            "iterations": installment_months,
+                        },
+                    ],
+                    stripe_account=stripe_account_id,
+
+                )
+
+    except stripe.error.StripeError as e:
+        print(f"❌ Stripe API Error: {str(e)}")
+    except Exception as e:
+        print(f"❌ Unexpected Error: {str(e)}")
 
 
 def handle_successful_payment(session):
     """Process successful payment, update Firestore, and notify the user."""
     try:
-        # ✅ Get customer email from customer_details
+        # ✅ Get customer email
         customer_email = session.get("customer_email") or session.get(
             "customer_details", {}
         ).get("email")
@@ -437,36 +562,176 @@ def handle_successful_payment(session):
 
         # ✅ Find user in Firestore by email
         user_ref = db.collection("users").where("email", "==", customer_email).limit(1)
-        user_docs = user_ref.stream()
+        user_docs = list(user_ref.stream())
 
-        for doc in user_docs:
-            user_id = doc.id  # Get the document ID
+        if not user_docs:
+            logger.error("User with email %s not found.", customer_email)
+            return
 
-            # ✅ Update user document to mark as paid
-            db.collection("users").document(user_id).update(
-                {"membershipPaid": True, "lastPaymentDate": fs.SERVER_TIMESTAMP}
+        user_id = user_docs[0].id  # Get the document ID
+
+        # ✅ Extract session ID
+        session_id = session.get("id")
+
+        # ✅ Retrieve club’s Stripe Express account ID
+        club_ref = db.collection("clubs").document(club_name).get()
+        if not club_ref.exists:
+            return jsonify({"error": "Club not found"}), 404
+
+        club_data = club_ref.to_dict()
+        stripe_account_id = club_data.get("stripe_account_id")
+
+        line_items = stripe.checkout.Session.list_line_items(
+            session_id, stripe_account=stripe_account_id
+        )["data"]
+
+        membership_purchased = False
+        purchased_items = []
+
+        for item in line_items:
+            price_id = item["price"]["id"]
+            quantity = item.get("quantity", 1)
+
+            # ✅ Find product details in Firestore
+            product_query = (
+                db.collection("clubs")
+                .document(club_name)
+                .collection("teams")
+                .document(f"{age_group}_{division}")
+                .collection("products")
+                .where("stripe_price_id", "==", price_id)
+                .limit(1)
             )
+            product_docs = list(product_query.stream())
 
-            # ✅ Add payment record in Firestore
-            payment_ref = db.collection("payments").document()
-            payment_ref.set(
+            if not product_docs:
+                logger.warning("Product with Stripe price ID %s not found.", price_id)
+                continue
+
+            product_data = product_docs[0].to_dict()
+            product_name = product_data.get("name", "Unknown Product")
+            category = product_data.get("category", "other")
+            is_membership = product_data.get("isMembership", False)
+            installment_months = product_data.get("installmentMonths")
+
+            if is_membership:
+                membership_purchased = True  # ✅ A membership was bought
+
+            # ✅ Store each purchased item
+            purchased_items.append(
                 {
-                    "userId": user_id,
-                    "email": customer_email,
-                    "amount": session["amount_total"] / 100,  # Convert from cents
-                    "currency": session["currency"],
-                    "status": "completed",
-                    "club": club_name,
-                    "ageGroup": age_group,
-                    "division": division,
-                    "timestamp": fs.SERVER_TIMESTAMP,
+                    "productId": price_id,
+                    "productName": product_name,
+                    "category": category,
+                    "quantity": quantity,
+                    "isMembership": is_membership,
+                    "installmentMonths": installment_months,
+                    "totalPrice": session["amount_total"] / 100,
                 }
             )
 
-            logger.info("✅ Payment successfully processed for %s", customer_email)
+        # ✅ Update membership status only if a membership was bought
+        if membership_purchased:
+            db.collection("users").document(user_id).update(
+                {"membershipPaid": True, "lastPaymentDate": firestore.SERVER_TIMESTAMP}
+            )
+
+        # ✅ Store the payment record in Firestore
+        payment_ref = db.collection("payments").document()
+        payment_ref.set(
+            {
+                "userId": user_id,
+                "email": customer_email,
+                "amount": session["amount_total"] / 100,  # Convert cents to EUR
+                "currency": session["currency"],
+                "status": "completed",
+                "club": club_name,
+                "ageGroup": age_group,
+                "division": division,
+                "purchasedItems": purchased_items,  # ✅ Includes category & membership info
+                "timestamp": fs.SERVER_TIMESTAMP,
+            }
+        )
+
+        logger.info("✅ Payment successfully processed for %s", customer_email)
 
     except Exception as e:
         logger.error("Error processing payment: %s", str(e))
+
+
+@app.route("/transactions/list", methods=["GET"])
+def list_transactions():
+    try:
+        user_email = request.args.get("email")
+        if not user_email:
+            return jsonify({"error": "User email is required"}), 400
+
+        # 🔍 Retrieve transactions from Firestore
+        transactions_ref = (
+            db.collection("payments")
+            .where("email", "==", user_email)
+            .order_by("timestamp", direction=fs.Query.DESCENDING)
+            .stream()
+        )
+
+        transactions = []
+        for doc in transactions_ref:
+            transaction_data = doc.to_dict()
+
+            transactions.append(
+                {
+                    "id": doc.id,
+                    "amount": transaction_data.get("amount"),
+                    "currency": transaction_data.get("currency"),
+                    "status": transaction_data.get("status"),
+                    "club": transaction_data.get("club"),
+                    "ageGroup": transaction_data.get("ageGroup"),
+                    "division": transaction_data.get("division"),
+                    "timestamp": transaction_data.get("timestamp").isoformat(),
+                    "purchasedItems": transaction_data.get(
+                        "purchasedItems", []
+                    ),  # ✅ Include itemized purchases
+                }
+            )
+
+        return jsonify({"transactions": transactions}), 200
+
+    except Exception as e:
+        logger.error("Error retrieving transactions: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+    
+
+@app.route("/stripe/login-link", methods=["POST"])
+def create_stripe_login_link():
+    try:
+        data = request.json
+        club_name = data.get("clubName")
+
+        if not club_name:
+            return jsonify({"error": "Club name is required"}), 400
+
+        # 🔍 Retrieve the club’s Stripe account ID from Firestore
+        club_ref = db.collection("clubs").document(club_name).get()
+        if not club_ref.exists:
+            return jsonify({"error": "Club not found"}), 404
+
+        club_data = club_ref.to_dict()
+        stripe_account_id = club_data.get("stripe_account_id")
+
+        if not stripe_account_id:
+            return jsonify({"error": "Club does not have a Stripe Express account"}), 400
+
+        # ✅ Generate login link for Stripe Express Dashboard
+        login_link = stripe.Account.create_login_link(stripe_account_id)
+
+        return jsonify({"url": login_link["url"]}), 200
+
+    except stripe.error.StripeError as e:
+        return jsonify({"error": f"Stripe error: {str(e)}"}), 500
+    except Exception as e:
+        logger.error("Unexpected error: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
 
 
 # Run the Flask app

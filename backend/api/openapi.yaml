@@ -1605,6 +1605,12 @@ paths:
                     installmentMonths:
                       type: integer
                       description: Number of months for installment plan (null for full payment).
+                    category:
+                      type: string
+                      description: Category of the product.
+                    isMembership:
+                      type: boolean
+                      description: Indicates if the product is a membership.
         '400':
           description: Missing or invalid request data.
         '500':
@@ -1659,6 +1665,12 @@ paths:
                     installmentMonths:
                       type: integer
                       description: Number of months for installment plan (null for full payment).
+                    category:
+                      type: string
+                      description: Category of the product.
+                    isMembership:
+                      type: boolean
+                      description: Indicates if the product is a membership.
                     stripe_product_id:
                       type: string
                       description: The Stripe product ID linked to this product.
@@ -1729,6 +1741,10 @@ paths:
                       type: integer
                       description: Quantity of the product being purchased.
                       example: 2
+                    installmentMonths:
+                      type: integer
+                      description: The number of months over which the subscription will be charged. If greater than 1, a subscription is created and automatically canceled after this duration.
+                      example: 6
       responses:
         '200':
           description: Stripe Checkout session created successfully.
@@ -1780,3 +1796,177 @@ paths:
           description: Invalid webhook signature or request payload.
         '500':
           description: Internal server error.
+
+  /transactions/list:
+    get:
+      x-google-backend:
+        address: https://microservice-payments-180320540339.europe-west2.run.app/transactions/list
+      summary: Retrieve a user's transaction history
+      description: Fetches a list of completed and pending transactions for a user based on their email. Each transaction includes itemized details of purchased products.
+      operationId: listTransactions
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: email
+          description: The email of the user whose transactions should be retrieved.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of transactions retrieved successfully.
+          schema:
+            type: object
+            properties:
+              transactions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Unique transaction ID.
+                    amount:
+                      type: number
+                      format: float
+                      description: Transaction amount in EUR.
+                      example: 50.00
+                    currency:
+                      type: string
+                      description: Currency of the transaction.
+                      example: "eur"
+                    status:
+                      type: string
+                      description: Payment status.
+                      example: "completed"
+                    club:
+                      type: string
+                      description: The club where the transaction was made.
+                      example: "Cobh Ramblers"
+                    ageGroup:
+                      type: string
+                      description: Age group related to the transaction.
+                      example: "U16"
+                    division:
+                      type: string
+                      description: Division related to the transaction.
+                      example: "Premier"
+                    timestamp:
+                      type: string
+                      format: date-time
+                      description: Timestamp when the transaction was recorded.
+                      example: "2025-02-27T12:34:56Z"
+                    purchasedItems:
+                      type: array
+                      description: List of purchased products in the transaction.
+                      items:
+                        type: object
+                        properties:
+                          productId:
+                            type: string
+                            description: Stripe price ID of the product.
+                            example: "price_ABC123"
+                          productName:
+                            type: string
+                            description: Name of the purchased product.
+                            example: "Season Membership"
+                          category:
+                            type: string
+                            description: Category of the product.
+                            enum:
+                              - membership
+                              - merchandise
+                              - training
+                              - match
+                              - other
+                            example: "membership"
+                          quantity:
+                            type: integer
+                            description: Quantity of the product purchased.
+                            example: 1
+                          installmentMonths:
+                            type: integer
+                            description: Number of months for installment plan. If omitted, it is a one-time payment.
+                            example: 6
+                          totalPrice:
+                            type: number
+                            format: float
+                            description: Total price paid for this product.
+                            example: 50.00
+        '400':
+          description: Missing or invalid query parameter.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "User email is required."
+        '500':
+          description: Internal server error.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error."
+
+  /stripe/login-link:
+    post:
+      x-google-backend:
+        address: https://microservice-payments-180320540339.europe-west2.run.app/stripe/login-link
+      summary: Generate a Stripe Express Dashboard login link
+      description: |
+        Creates a one-time login link for a club's Stripe Express account, allowing administrators to access the Express Dashboard.
+      operationId: createStripeLoginLink
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Club details to generate the Stripe Express login link.
+          required: true
+          schema:
+            type: object
+            required:
+              - clubName
+            properties:
+              clubName:
+                type: string
+                description: The name of the club associated with the Stripe Express account.
+                example: "Cobh Ramblers"
+      responses:
+        '200':
+          description: Stripe Express login link created successfully.
+          schema:
+            type: object
+            properties:
+              url:
+                type: string
+                description: The one-time login URL for the Stripe Express Dashboard.
+                example: "https://connect.stripe.com/express/someGeneratedLoginLink"
+        '400':
+          description: Missing or invalid request data.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Club name is required"
+        '404':
+          description: Club not found or does not have a Stripe Express account.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Club not found"
+        '500':
+          description: Internal server error or Stripe API failure.
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"
