@@ -2000,18 +2000,6 @@ paths:
               email:
                 type: string
                 description: Email address of the authenticated user
-              month:
-                type: string
-                description: Current month (format yyyy-MM) for scheduling queries
-              clubName:
-                type: string
-                description: The name of the club for context
-              ageGroup:
-                type: string
-                description: The age group for context
-              division:
-                type: string
-                description: The division for context
       responses:
         '200':
           description: AI assistant response
@@ -2020,17 +2008,7 @@ paths:
             properties:
               reply:
                 type: string
-                description: AI Assistant's natural language reply (if no function call is made)
-              function_call:
-                type: object
-                description: (Optional) GPT function call if the assistant decides to request a microservice call
-                properties:
-                  name:
-                    type: string
-                    description: The name of the function to call (e.g., 'getUserClubInfo')
-                  arguments:
-                    type: string
-                    description: The JSON-encoded arguments for the function call
+                description: AI Assistant's natural language response
         '400':
           description: Invalid request (missing required fields)
         '401':
