@@ -16,7 +16,6 @@ CORS(app)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-
 # --------------------------------------------------------------------------------
 # 2) Utility to load secrets from Google Secret Manager
 # --------------------------------------------------------------------------------
@@ -70,121 +69,153 @@ openai_client = OpenAI(api_key=openai_api_key)
 # 5) Allowed function(s) for GPT
 #     We'll define just one function: "getUserClubInfo".
 # --------------------------------------------------------------------------------
-FUNCTIONS = [
+TOOLS = [
     {
-        "name": "getUserClubInfo",
-        "description": "Retrieve the club info of a user by email (read-only).",
-        "parameters": {
-            "type": "object",
-            "properties": {"email": {"type": "string", "description": "User email"}},
-            "required": ["email"],
-        },
-    },
-    {
-        "name": "searchClubs",
-        "description": "Search for clubs with optional filters.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "clubName": {"type": "string"},
-                "county": {"type": "string"},
-                "ageGroup": {"type": "string"},
-                "division": {"type": "string"},
+        "type": "function",
+        "function": {
+            "name": "getUserClubInfo",
+            "description": "Retrieve the club info of a user by email (read-only).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "email": {"type": "string", "description": "User email"}
+                },
+                "required": ["email"],
             },
         },
     },
     {
-        "name": "getPlayers",
-        "description": "Retrieve players for a club, age group, and division.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "clubName": {"type": "string"},
-                "ageGroup": {"type": "string"},
-                "division": {"type": "string"},
+        "type": "function",
+        "function": {
+            "name": "searchClubs",
+            "description": "Search for clubs with optional filters.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "clubName": {"type": "string"},
+                    "county": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                },
             },
-            "required": ["clubName", "ageGroup", "division"],
         },
     },
     {
-        "name": "getScheduledMatches",
-        "description": "Retrieve scheduled matches for a month, club, age group, and division.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "month": {"type": "string"},
-                "clubName": {"type": "string"},
-                "ageGroup": {"type": "string"},
-                "division": {"type": "string"},
+        "type": "function",
+        "function": {
+            "name": "getPlayers",
+            "description": "Retrieve players for a club, age group, and division.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                },
+                "required": ["clubName", "ageGroup", "division"],
             },
-            "required": ["month", "clubName", "ageGroup", "division"],
         },
     },
     {
-        "name": "getScheduledTrainings",
-        "description": "Retrieve scheduled training sessions for a month, club, age group, and division.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "month": {"type": "string"},
-                "clubName": {"type": "string"},
-                "ageGroup": {"type": "string"},
-                "division": {"type": "string"},
+        "type": "function",
+        "function": {
+            "name": "getScheduledMatches",
+            "description": "Retrieve scheduled matches for a month, club, age group, and division.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "month": {"type": "string"},
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                },
+                "required": ["month", "clubName", "ageGroup", "division"],
             },
-            "required": ["month", "clubName", "ageGroup", "division"],
         },
     },
     {
-        "name": "getPlayerRatings",
-        "description": "Retrieve player ratings for a club, age group, and division.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "clubName": {"type": "string"},
-                "ageGroup": {"type": "string"},
-                "division": {"type": "string"},
+        "type": "function",
+        "function": {
+            "name": "getScheduledTrainings",
+            "description": "Retrieve scheduled training sessions for a month, club, age group, and division.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "month": {"type": "string"},
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                },
+                "required": ["month", "clubName", "ageGroup", "division"],
             },
-            "required": ["clubName", "ageGroup", "division"],
         },
     },
     {
-        "name": "getMatchRatings",
-        "description": "Retrieve match ratings for a club, age group, and division.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "clubName": {"type": "string"},
-                "ageGroup": {"type": "string"},
-                "division": {"type": "string"},
+        "type": "function",
+        "function": {
+            "name": "getPlayerRatings",
+            "description": "Retrieve player ratings for a club, age group, and division.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                },
+                "required": ["clubName", "ageGroup", "division"],
             },
-            "required": ["clubName", "ageGroup", "division"],
         },
     },
     {
-        "name": "getRides",
-        "description": "Retrieve all available carpool rides.",
-        "parameters": {"type": "object", "properties": {}},
-    },
-    {
-        "name": "listProducts",
-        "description": "Retrieve products for a team in a club.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "clubName": {"type": "string"},
-                "ageGroup": {"type": "string"},
-                "division": {"type": "string"},
+        "type": "function",
+        "function": {
+            "name": "getMatchRatings",
+            "description": "Retrieve match ratings for a club, age group, and division.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                },
+                "required": ["clubName", "ageGroup", "division"],
             },
-            "required": ["clubName", "ageGroup", "division"],
         },
     },
     {
-        "name": "listTransactions",
-        "description": "Retrieve transaction history for a user.",
-        "parameters": {
-            "type": "object",
-            "properties": {"email": {"type": "string"}},
-            "required": ["email"],
+        "type": "function",
+        "function": {
+            "name": "getRides",
+            "description": "Retrieve all available carpool rides.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "listProducts",
+            "description": "Retrieve products for a team in a club.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                },
+                "required": ["clubName", "ageGroup", "division"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "listTransactions",
+            "description": "Retrieve transaction history for a user.",
+            "parameters": {
+                "type": "object",
+                "properties": {"email": {"type": "string"}},
+                "required": ["email"],
+            },
         },
     },
 ]
@@ -222,7 +253,7 @@ def query_ai():
     }
 
     Verifies the user, calls OpenAI ChatCompletion with function calling.
-    If GPT returns a function_call to getUserClubInfo, we call the API gateway
+    If GPT returns a tool_calls to getUserClubInfo, we call the API gateway
     /user/club-info?email=..., then return the final answer to the user.
     """
     try:
@@ -234,7 +265,6 @@ def query_ai():
         club_name = data.get("clubName")
         age_group = data.get("ageGroup")
         division = data.get("division")
-
 
         if not user_message or not id_token or not user_email:
             return jsonify({"error": "Missing required fields"}), 400
@@ -249,7 +279,14 @@ def query_ai():
             return jsonify({"error": "Invalid token"}), 401
 
         # Build system + user messages
-        system_prompt = SYSTEM_PROMPT.format(user_email=user_email, club_name=club_name, age_group=age_group, division=division, current_month=month, id_token=id_token)
+        system_prompt = SYSTEM_PROMPT.format(
+            user_email=user_email,
+            club_name=club_name,
+            age_group=age_group,
+            division=division,
+            current_month=month,
+            id_token=id_token,
+        )
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
@@ -259,99 +296,115 @@ def query_ai():
         response = openai_client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
-            functions=FUNCTIONS,  # here's our single function
-            function_call="auto",  # let GPT call it if needed
+            tools=TOOLS,
+            tool_choice="auto",
             temperature=0.2,
         )
 
         msg = response.choices[0].message
 
         # Check if GPT returned a function call
-        if msg.function_call:
-            fn_name = msg.function_call.name
-            fn_args_json = msg.function_call.arguments
+        if msg.tool_calls:
+            replies = []  # Store multiple replies if multiple tool calls exist
 
-            fn_args = {}
-            try:
-                fn_args = json.loads(fn_args_json)
-            except Exception as ex:
-                logger.error("Error parsing function call arguments: %s", str(ex))
+            for tool_call in msg.tool_calls:
+                fn_name = tool_call.function.name
+                try:
+                    fn_args = json.loads(tool_call.function.arguments)
+                except Exception as ex:
+                    logger.error("Error parsing function call arguments: %s", str(ex))
+                    fn_args = {}
 
-            if fn_name == "getUserClubInfo":
-                reply = call_external_service(
-                    "getUserClubInfo",
-                    "/user/club-info",
-                    fn_args,
-                    id_token,
-                )
+                reply = None
 
-            elif fn_name == "searchClubs":
-                reply = call_external_service(
-                    "searchClubs",
-                    "/club/search",
-                    fn_args,
-                    id_token,
-                )
-            elif fn_name == "getPlayers":
-                reply = call_external_service(
-                    "getPlayers",
-                    "/club/players",
-                    fn_args,
-                    id_token,
-                )
-            elif fn_name == "getScheduledMatches":
-                reply = call_external_service(
-                    "getScheduledMatches",
-                    "/schedule/matches",
-                    fn_args,
-                    id_token,
-                )
-            elif fn_name == "getScheduledTrainings":
-                reply = call_external_service(
-                    "getScheduledTrainings",
-                    "/schedule/trainings",
-                    fn_args,
-                    id_token,
-                )
-            elif fn_name == "getPlayerRatings":
-                reply = call_external_service(
-                    "getPlayerRatings",
-                    "/player/get-ratings",
-                    fn_args,
-                    id_token,
-                )
-            elif fn_name == "getMatchRatings":
-                reply = call_external_service(
-                    "getMatchRatings",
-                    "/match/get-ratings",
-                    fn_args,
-                    id_token,
-                )
-            elif fn_name == "getRides":
-                reply = call_external_service(
-                    "getRides",
-                    "/carpool/rides",
-                    {},
-                    id_token,
-                )
-            elif fn_name == "listProducts":
-                reply = call_external_service(
-                    "listProducts",
-                    "/products/list",
-                    fn_args,
-                    id_token,
-                )
-            elif fn_name == "listTransactions":
-                reply = call_external_service(
-                    "listTransactions",
-                    "/transactions/list",
-                    fn_args,
-                    id_token,
-                )
-            else:
-                reply = "Unknown function call received."
+                if fn_name == "getUserClubInfo":
+                    reply = call_external_service(
+                        "getUserClubInfo",
+                        "/user/club-info",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
 
-            return jsonify({"reply": reply}), 200
+                elif fn_name == "searchClubs":
+                    reply = call_external_service(
+                        "searchClubs",
+                        "/club/search",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "getPlayers":
+                    reply = call_external_service(
+                        "getPlayers",
+                        "/club/players",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "getScheduledMatches":
+                    reply = call_external_service(
+                        "getScheduledMatches",
+                        "/schedule/matches",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "getScheduledTrainings":
+                    reply = call_external_service(
+                        "getScheduledTrainings",
+                        "/schedule/trainings",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "getPlayerRatings":
+                    reply = call_external_service(
+                        "getPlayerRatings",
+                        "/player/get-ratings",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "getMatchRatings":
+                    reply = call_external_service(
+                        "getMatchRatings",
+                        "/match/get-ratings",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "getRides":
+                    reply = call_external_service(
+                        "getRides",
+                        "/carpool/rides",
+                        {},
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "listProducts":
+                    reply = call_external_service(
+                        "listProducts",
+                        "/products/list",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "listTransactions":
+                    reply = call_external_service(
+                        "listTransactions",
+                        "/transactions/list",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                else:
+                    reply = "Unknown function call received."
+
+                if reply:
+                    replies.append(reply)
+
+            return jsonify({"reply": "\n".join(replies)}), 200
 
         else:
             # GPT gave a direct text response with no function call
@@ -363,21 +416,34 @@ def query_ai():
         return jsonify({"error": str(e)}), 500
 
 
-def call_external_service(fn_name, base_url, params, id_token):
+def call_external_service(fn_name, base_url, params, id_token, original_user_message):
     response = requests.get(
         "https://grassroots-gateway-2au66zeb.nw.gateway.dev" + base_url,
         headers={"Authorization": f"Bearer {id_token}"},
         params=params,
-        timeout=10,
+        timeout=20,
     )
     if response.status_code == 200:
         data = response.json()
+
         followup_messages = [
-            {"role": "system", "content": f"You just retrieved data for {fn_name}."},
-            {"role": "assistant", "name": fn_name, "content": json.dumps(data)},
+            {
+                "role": "system",
+                "content": f"""
+You have retrieved data from the {fn_name} endpoint.
+
+Your job is to convert this into a clear, helpful message for the user, who is a grassroots football manager.
+
+Use concise bullet points. Never show email addresses or sensitive data. Use plain text, do not use HTML or markdown language in the response.
+Avoid raw JSON-like responses unless absolutely necessary. 
+Explain the significance of the data where relevant.
+""",
+            },
+            {"role": "user", "content": f"The user asked: {original_user_message}. Here is the data you retrieved: {json.dumps(data)}"},
         ]
+
         second_response = openai_client.chat.completions.create(
-            model="gpt-4o", messages=followup_messages, temperature=0.2
+            model="gpt-4o", messages=followup_messages, temperature=0.4
         )
         return second_response.choices[0].message.content
     else:
