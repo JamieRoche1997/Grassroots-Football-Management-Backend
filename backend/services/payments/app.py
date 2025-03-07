@@ -2,7 +2,6 @@ import json
 import logging
 import os
 from flask import Flask, request, jsonify
-import time
 import stripe
 from firebase_admin import credentials, firestore, initialize_app
 from flask_cors import CORS
@@ -177,11 +176,14 @@ def create_product():
             existing_product_ref = (
                 db.collection("clubs")
                 .document(club_name)
-                .collection("teams")
-                .document(f"{age_group}_{division}")
+                .collection("ageGroups")
+                .document(age_group)
+                .collection("divisions")
+                .document(division)
                 .collection("products")
                 .document(product_name)
             )
+            
             existing_product = existing_product_ref.get()
 
             if existing_product.exists:
@@ -250,8 +252,6 @@ def create_product():
                         "stripe_price_id": stripe_price_id,
                         "price": total_price,
                         "installmentMonths": installment_months,
-                        "ageGroup": age_group,
-                        "division": division,
                         "category": category,  # ✅ Store category in Firestore
                         "isMembership": is_membership,  # ✅ Store membership flag
                     }
@@ -263,8 +263,6 @@ def create_product():
                     "stripe_product_id": stripe_product_id,
                     "stripe_price_id": stripe_price_id,
                     "price": total_price,
-                    "ageGroup": age_group,
-                    "division": division,
                     "installmentMonths": installment_months,
                     "category": category,  # ✅ Include in response
                     "isMembership": is_membership,  # ✅ Include in response
@@ -310,8 +308,10 @@ def list_products():
         products_ref = (
             db.collection("clubs")
             .document(club_name)
-            .collection("teams")
-            .document(f"{age_group}_{division}")
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
             .collection("products")
             .stream()
         )
@@ -330,8 +330,6 @@ def list_products():
                     "isMembership": product_data.get("isMembership"),
                     "stripe_product_id": product_data.get("stripe_product_id"),
                     "stripe_price_id": product_data.get("stripe_price_id"),
-                    "ageGroup": product_data.get("ageGroup"),
-                    "division": product_data.get("division"),
                 }
             )
 
@@ -382,8 +380,10 @@ def create_checkout_session():
             product_ref = (
                 db.collection("clubs")
                 .document(club_name)
-                .collection("teams")
-                .document(f"{age_group}_{division}")
+                .collection("ageGroups")
+                .document(age_group)
+                .collection("divisions")
+                .document(division)
                 .collection("products")
                 .document(item.get("id"))
                 .get()
@@ -596,8 +596,10 @@ def handle_successful_payment(session):
             product_query = (
                 db.collection("clubs")
                 .document(club_name)
-                .collection("teams")
-                .document(f"{age_group}_{division}")
+                .collection("ageGroups")
+                .document(age_group)
+                .collection("divisions")
+                .document(division)
                 .collection("products")
                 .where("stripe_price_id", "==", price_id)
                 .limit(1)
@@ -632,12 +634,19 @@ def handle_successful_payment(session):
 
         # ✅ Update membership status only if a membership was bought
         if membership_purchased:
-            db.collection("users").document(user_id).update(
+            (db.collection("clubs").document(club_name)
+            .collection("ageGroups").document(age_group)
+            .collection("divisions").document(division)
+            .collection("memberships").document(customer_email).update(
                 {"membershipPaid": True, "lastPaymentDate": firestore.SERVER_TIMESTAMP}
-            )
+            ))
 
         # ✅ Store the payment record in Firestore
-        payment_ref = db.collection("payments").document()
+        payment_ref = (db.collection("clubs").document(club_name)
+                       .collection("ageGroups").document(age_group)
+                       .collection("divisions").document(division)
+                       .collection("payments").document(customer_email))
+
         payment_ref.set(
             {
                 "userId": user_id,
@@ -645,9 +654,6 @@ def handle_successful_payment(session):
                 "amount": session["amount_total"] / 100,  # Convert cents to EUR
                 "currency": session["currency"],
                 "status": "completed",
-                "club": club_name,
-                "ageGroup": age_group,
-                "division": division,
                 "purchasedItems": purchased_items,  # ✅ Includes category & membership info
                 "timestamp": fs.SERVER_TIMESTAMP,
             }
@@ -663,15 +669,21 @@ def handle_successful_payment(session):
 def list_transactions():
     try:
         user_email = request.args.get("email")
+        club_name = request.args.get("clubName")
+        age_group = request.args.get("ageGroup")
+        division = request.args.get("division")
         if not user_email:
             return jsonify({"error": "User email is required"}), 400
 
         # 🔍 Retrieve transactions from Firestore
         transactions_ref = (
-            db.collection("payments")
+            (db.collection("clubs").document(club_name)
+            .collection("ageGroups").document(age_group)
+            .collection("divisions").document(division)
+            .collection("payments")
             .where("email", "==", user_email)
             .order_by("timestamp", direction=fs.Query.DESCENDING)
-            .stream()
+            .stream())
         )
 
         transactions = []
@@ -684,9 +696,6 @@ def list_transactions():
                     "amount": transaction_data.get("amount"),
                     "currency": transaction_data.get("currency"),
                     "status": transaction_data.get("status"),
-                    "club": transaction_data.get("club"),
-                    "ageGroup": transaction_data.get("ageGroup"),
-                    "division": transaction_data.get("division"),
                     "timestamp": transaction_data.get("timestamp").isoformat(),
                     "purchasedItems": transaction_data.get(
                         "purchasedItems", []
@@ -732,6 +741,45 @@ def create_stripe_login_link():
         logger.error("Unexpected error: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
 
+# Get all payments - GET /payments
+@app.route("/payments", methods=["GET"])
+def get_payments():
+    try:
+        club_name = request.args.get("clubName")
+        age_group = request.args.get("ageGroup")
+        division = request.args.get("division")
+
+        if not all([club_name, age_group, division]):
+            return jsonify({"error": "Missing required query parameters"}), 400
+
+        payments_ref = (
+            db.collection("clubs").document(club_name)
+            .collection("ageGroups").document(age_group)
+            .collection("divisions").document(division)
+            .collection("payments")
+            .stream()
+        )
+
+        payments = []
+        for doc in payments_ref:
+            payments_data = doc.to_dict()
+
+            payments.append(
+                {
+                    "id": doc.id,
+                    "amount": payments_data.get("amount"),
+                    "currency": payments_data.get("currency"),
+                    "status": payments_data.get("status"),
+                    "timestamp": payments_data.get("timestamp").isoformat(),
+                    "purchasedItems": payments_data.get("purchasedItems", []),
+                }
+            )
+
+        return jsonify({"payments": payments}), 200
+
+    except Exception as e:
+        logger.error("Error retrieving payments: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # Run the Flask app

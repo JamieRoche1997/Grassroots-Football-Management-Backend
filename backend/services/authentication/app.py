@@ -9,7 +9,7 @@ from firebase_admin.auth import (
     RevokedIdTokenError,
 )
 from flask_cors import CORS
-from google.cloud import secretmanager
+from google.cloud import firestore as fs, secretmanager
 
 # Initialise Flask app
 app = Flask(__name__)
@@ -34,10 +34,10 @@ def load_service_account_secret():
 
         # Access the secret version
         response = client.access_secret_version(request={"name": secret_path})
-        service_account_info = response.payload.data.decode("UTF-8")
+        service_account_data = response.payload.data.decode("UTF-8")
 
         # Convert JSON string to a Python dictionary
-        return json.loads(service_account_info)
+        return json.loads(service_account_data)
     except Exception as e:
         logging.error("Error loading service account secret: %s", str(e))
         raise RuntimeError(f"Failed to load service account secret: {str(e)}") from e
@@ -56,66 +56,89 @@ except Exception as e:
 # Initialise Firestore
 db = firestore.client()
 
+# Collection reference
+users_ref = db.collection("users")
 
-# Sign Up
-@app.route("/signup", methods=["POST"])
-def register():
+@app.route("/auth/create", methods=["POST"])
+def create_auth_user():
     try:
         data = request.json
-        email = data["email"]
+        email = data["email"].strip().lower()
         password = data["password"]
-        name = data["name"]
 
-        # Create user in Firebase Authentication
-        user = auth.create_user(
+        # Create user in Firebase Authentication only
+        user_record = auth.create_user(
             email=email,
             password=password,
-            display_name=name,
         )
 
-        return (
-            jsonify(
-                {
-                    "message": "User registered successfully",
-                    "firebase_uid": user.uid,
-                    "email": email,
-                    "name": name,
-                }
-            ),
-            201,
-        )
+        user_data = {
+            "uid": user_record.uid,
+            "email": email,
+        }
+
+        users_ref.document(email).set(user_data)
+
+        return jsonify({
+            "message": "User created in Firebase Authentication",
+            "uid": user_record.uid,
+            "email": email,
+        }), 201
 
     except auth.EmailAlreadyExistsError:
         return jsonify({"error": "Email already exists"}), 400
+    except Exception as e:
+        logging.error("Error creating auth user: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+# Create User - POST /user
+@app.route("/user", methods=["POST"])
+def create_user():
+    try:
+        data = request.json
+        email = data["email"].strip().lower()
+
+        user_data = {
+            "email": email,
+            "uid": data.get("uid", ""),
+        }
+
+        users_ref.document(email).set(user_data)
+
+        return jsonify({"message": "User created successfully"}), 201
+
     except KeyError as e:
+        logging.error("Key error: %s", str(e))
         return jsonify({"error": f"Missing key: {str(e)}"}), 400
-    except TypeError as e:
-        return jsonify({"error": f"Type error: {str(e)}"}), 400
     except ValueError as e:
+        logging.error("Value error: %s", str(e))
         return jsonify({"error": f"Value error: {str(e)}"}), 400
+    except Exception as e:
+        logging.error("Unexpected error: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
 
 
-# Sign In
-@app.route("/signin", methods=["POST"])
-def sign_in():
+# Login - POST /auth/login
+@app.route("/auth/login", methods=["POST"])
+def login():
     try:
         data = request.json
         id_token = data["idToken"]
 
-        # Verify the ID token using Firebase Admin SDK
         decoded_token = auth.verify_id_token(id_token)
-        user = auth.get_user(decoded_token["uid"])
+        uid = decoded_token.get("uid")
+        email = decoded_token.get("email").strip().lower()
 
-        return (
-            jsonify(
-                {
-                    "message": "User signed in successfully",
-                    "firebase_uid": user.uid,
-                    "email": user.email,
-                }
-            ),
-            200,
-        )
+        user_doc = users_ref.document(email).get()
+
+        if not user_doc.exists:
+            return jsonify({"error": "User not found in Firestore"}), 404
+
+        return jsonify({
+            "message": "Login successful",
+            "uid": uid,
+            "email": email,
+        }), 200
 
     except (InvalidIdTokenError, ExpiredIdTokenError, RevokedIdTokenError):
         return jsonify({"error": "Invalid or expired ID token"}), 401
@@ -123,6 +146,74 @@ def sign_in():
         return jsonify({"error": f"Missing key: {str(e)}"}), 400
     except ValueError as e:
         return jsonify({"error": f"Value error: {str(e)}"}), 400
+
+# Get User - GET /auth/{email}
+@app.route("/auth/<email>", methods=["GET"])
+def get_user(email):
+    try:
+        email = email.strip().lower()
+
+        user_doc = users_ref.document(email).get()
+
+        if not user_doc.exists:
+            return jsonify({"error": "User not found"}), 404
+
+        user_data = user_doc.to_dict()
+
+        return jsonify({
+            "uid": user_data.get("uid"),
+            "email": user_data.get("email"),
+        }), 200
+
+    except auth.UserNotFoundError:
+        return jsonify({"error": "User not found in Firebase Auth"}), 404
+
+
+# Update User - PATCH /auth/{email}
+@app.route("/auth/<email>", methods=["PATCH"])
+def update_user(email):
+    try:
+        email = email.strip().lower()
+        update_data = request.json
+
+        if "uid" not in update_data:
+            return jsonify({"error": "UID is required"}), 400
+
+        users_ref.document(email).update({
+            "uid": update_data["uid"],
+        })
+
+        return jsonify({"message": "User UID updated successfully"}), 200
+
+    except Exception as e:
+        logging.error("Error updating user: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+
+# Delete User - DELETE /auth/{email}
+@app.route("/auth/<email>", methods=["DELETE"])
+def delete_user(email):
+    try:
+        email = email.strip().lower()
+
+        user_doc = users_ref.document(email).get()
+
+        if not user_doc.exists:
+            return jsonify({"error": "User not found"}), 404
+
+        user_data = user_doc.to_dict()
+        uid = user_data.get("uid")
+
+        # Delete from Firebase Auth
+        auth.delete_user(uid)
+
+        # Delete from Firestore
+        users_ref.document(email).delete()
+
+        return jsonify({"message": "User deleted successfully"}), 200
+
+    except auth.UserNotFoundError:
+        return jsonify({"error": "User not found in Firebase Auth"}), 404
 
 
 # Run the Flask app

@@ -192,14 +192,19 @@ def join_club_request():
                 400,
             )
 
-        join_requests_ref = db.collection("joinRequests")
+        join_requests_ref = (
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
+            .collection("joinRequests")
+        )
         join_requests_ref.add(
             {
                 "name": name,
                 "playerEmail": player_email,
-                "clubName": club_name,
-                "ageGroup": age_group,
-                "division": division,
                 "status": "pending",
                 "requestedAt": fs.SERVER_TIMESTAMP,
             }
@@ -230,10 +235,13 @@ def get_join_requests():
 
         # Query for pending requests for the club, age group, and division
         join_requests_ref = (
-            db.collection("joinRequests")
-            .where("clubName", "==", club_name)
-            .where("ageGroup", "==", age_group)
-            .where("division", "==", division)
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
+            .collection("joinRequests")
             .where("status", "==", "pending")
         )
         requests = [req.to_dict() for req in join_requests_ref.stream()]
@@ -261,21 +269,17 @@ def approve_join_request():
 
         # Update join request status to approved
         join_requests_ref = (
-            db.collection("joinRequests")
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
+            .collection("joinRequests")
             .where("playerEmail", "==", player_email)
-            .where("clubName", "==", club_name)
         )
         for req in join_requests_ref.stream():
             req.reference.update({"status": "approved"})
-
-        # Add player to club's players list
-        club_ref = db.collection("clubs").document(club_name)
-        club_ref.update({"players": fs.ArrayUnion([player_email])})
-
-        user_ref = db.collection("users").document(player_email)
-        user_ref.update(
-            {"clubName": club_name, "ageGroup": age_group, "division": division}
-        )
 
         return jsonify({"message": "Player added to the club"}), 200
 
@@ -293,15 +297,23 @@ def reject_join_request():
         data = request.json
         player_email = data.get("playerEmail")
         club_name = data.get("clubName")
+        age_group = data.get("ageGroup")
+        division = data.get("division")
 
         if not player_email or not club_name:
             return jsonify({"error": "Player email and club name are required"}), 400
 
         # Update join request status to rejected
         join_requests_ref = (
-            db.collection("joinRequests")
+            (db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
+             .collection("joinRequests")
             .where("playerEmail", "==", player_email)
-            .where("clubName", "==", club_name)
+            .where("clubName", "==", club_name))
         )
         for req in join_requests_ref.stream():
             req.reference.update({"status": "rejected"})
@@ -330,76 +342,28 @@ def get_players():
             )
 
         # Query users collection for players matching the criteria
-        users_ref = db.collection("users")
+        membership_ref = (db.collection("clubs")
+                          .document(club_name)
+                          .collection("ageGroups")
+                          .document(age_group)
+                          .collection("divisions")
+                          .document(division)
+                          .collection("memberships"))
         players_query = (
-            users_ref.where("role", "==", "player")
+            membership_ref.where("role", "==", "player")
             .where("clubName", "==", club_name)
             .where("ageGroup", "==", age_group)
             .where("division", "==", division)
             .stream()
         )
 
-       # Convert query results to a list of dictionaries
+        # Convert query results to a list of dictionaries
         players = [player.to_dict() for player in players_query]
 
         return jsonify(players), 200
 
     except Exception as e:
         logger.error("Error retrieving players: %s", str(e))
-        return jsonify({"error": "Internal server error"}), 500
-
-
-@app.route("/club/players/remove", methods=["POST"])
-def remove_players():
-    """
-    Remove specified players from a club's players array in Firestore.
-    """
-    try:
-        data = request.json
-        club_name = data.get("clubName")
-        age_group = data.get("ageGroup")
-        division = data.get("division")
-        player_emails = data.get("playerEmails", [])
-
-        if not club_name or not age_group or not division or not player_emails:
-            return (
-                jsonify(
-                    {
-                        "error": "Club name, age group, division, and player emails are required"
-                    }
-                ),
-                400,
-            )
-
-        club_ref = db.collection("clubs").document(club_name)
-        club_doc = club_ref.get()
-
-        if not club_doc.exists:
-            return jsonify({"error": "Club not found"}), 404
-
-        club_data = club_doc.to_dict()
-        current_players = club_data.get("players", [])
-
-        # Filter out the players to be removed
-        updated_players = [
-            player for player in current_players if player not in player_emails
-        ]
-
-        # Update the Firestore document
-        club_ref.update({"players": updated_players})
-
-        return (
-            jsonify(
-                {
-                    "message": "Players removed successfully",
-                    "removedPlayers": player_emails,
-                }
-            ),
-            200,
-        )
-
-    except Exception as e:
-        logger.error("Error removing players: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
 
 

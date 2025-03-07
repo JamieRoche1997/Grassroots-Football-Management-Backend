@@ -56,122 +56,127 @@ except Exception as e:
 # Initialise Firestore
 db = firestore.client()
 
-
-@app.route('/schedule/matches', methods=['GET'])
-def get_matches():
-    """
-    Retrieve matches for a specific month, age group, and division.
-    """
-    try:
-        month = request.args.get('month')  # Format: yyyy-MM
-        club_name = request.args.get('clubName')
-        age_group = request.args.get('ageGroup')
-        division = request.args.get('division')
-
-        if not month or not age_group or not division:
-            return jsonify({"error": "Month, age group, and division are required"}), 400
-
-        matches_ref = db.collection('matches')
-        query = matches_ref.where('ageGroup', '==', age_group).where('division', '==', division)
-
-        # Filter by month
-        matches = [
-            match.to_dict()
-            for match in query.stream()
-            if match.to_dict()['date'].startswith(month) and
-               (match.to_dict().get('homeTeam') == club_name or match.to_dict().get('awayTeam') == club_name)
-        ]
-
-        return jsonify(matches), 200
-
-    except Exception as e:
-        logging.error("Error fetching matches: %s", e)
-        return jsonify({"error": "Internal server error"}), 500
-
-
-@app.route('/schedule/add-fixture', methods=['POST'])
+### CREATE FIXTURE ###
+# CREATE FIXTURE
+@app.route('/schedule/fixture', methods=['POST'])
 def add_fixture():
-    """
-    Add a new fixture to the schedule.
-    """
     try:
         data = request.json
         fixture = {
             "matchId": str(uuid.uuid4()),
             "homeTeam": data['homeTeam'],
             "awayTeam": data['awayTeam'],
-            "ageGroup": data['ageGroup'],
-            "division": data['division'],
             "date": data['date'],
-            "result": None,  # Result will be null initially
             "createdBy": data['createdBy']
         }
-        db.collection('matches').document(fixture['matchId']).set(fixture)
+        (db.collection('clubs').document(data['clubName'])
+         .collection('ageGroups').document(data['ageGroup'])
+         .collection('divisions').document(data['division'])
+         .collection('fixtures').document(fixture['matchId']).set(fixture))
         return jsonify({"message": "Fixture added successfully"}), 201
 
-    except KeyError as e:
-        return jsonify({"error": f"Missing key: {str(e)}"}), 400
     except Exception as e:
         logging.error("Error adding fixture: %s", e)
         return jsonify({"error": "Internal server error"}), 500
 
 
-@app.route('/schedule/update-result', methods=['PUT'])
-def update_result():
-    """
-    Update the result and match events of a match fixture.
-    """
+### UPDATE FIXTURE ###
+# UPDATE FIXTURE
+@app.route('/schedule/fixture', methods=['PUT'])
+def update_fixture():
     try:
         data = request.json
-        match_id = data.get('matchId')
-        home_score = data.get('homeScore')
-        away_score = data.get('awayScore')
-        match_events = data.get('events', [])  # Default to an empty list if not provided
+        match_id = data['matchId']
 
-        if not match_id or home_score is None or away_score is None:
-            return jsonify({"error": "matchId, homeScore, and awayScore are required"}), 400
+        fixture_update = {k: v for k, v in data.items() if k in ['homeTeam', 'awayTeam', 'date']}
+        fixture_update['updatedAt'] = fs.SERVER_TIMESTAMP
 
-        match_ref = db.collection('matches').document(match_id)
-        match = match_ref.get()
+        (db.collection('clubs').document(data['clubName'])
+         .collection('ageGroups').document(data['ageGroup'])
+         .collection('divisions').document(data['division'])
+         .collection('fixtures').document(match_id).update(fixture_update))
 
-        if not match.exists:
-            return jsonify({"error": "Match not found"}), 404
+        return jsonify({"message": "Fixture updated successfully"}), 200
 
-        update_data = {
-            "homeScore": home_score,
-            "awayScore": away_score,
-            "updatedAt": fs.SERVER_TIMESTAMP
-        }
-
-        # Append new match events if provided
-        if match_events:
-            existing_events = match.to_dict().get("events", [])
-
-            # Ensure only unique events are stored
-            all_events = existing_events + match_events
-            unique_events = {f"{e['playerEmail']}_{e['minute']}_{e['type']}": e for e in all_events}.values()
-            
-            update_data["events"] = list(unique_events)  # ✅ Replaces instead of appending duplicates
-
-
-        match_ref.update(update_data)
-
-        return jsonify({"message": "Match result and events updated successfully"}), 200
-
-    except KeyError as e:
-        return jsonify({"error": f"Missing key: {str(e)}"}), 400
     except Exception as e:
-        logging.error("Error updating match result: %s", e)
+        logging.error("Error updating fixture: %s", e)
         return jsonify({"error": "Internal server error"}), 500
-    
 
-@app.route('/schedule/trainings', methods=['GET'])
-def get_trainings():
-    """
-    Retrieve training sessions for a specific month, age group, and division.
-    """
+
+### DELETE FIXTURE ###
+# DELETE FIXTURE
+@app.route('/schedule/fixture', methods=['DELETE'])
+def delete_fixture():
     try:
-        month = request.args.get('month')  # Format: yyyy-MM
+        match_id = request.args.get('matchId')
+        club_name = request.args.get('clubName')
+        age_group = request.args.get('ageGroup')
+        division = request.args.get('division')
+
+        (db.collection('clubs').document(club_name)
+         .collection('ageGroups').document(age_group)
+         .collection('divisions').document(division)
+         .collection('fixtures').document(match_id).delete())
+
+        return jsonify({"message": "Fixture deleted successfully"}), 200
+
+    except Exception as e:
+        logging.error("Error deleting fixture: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+### GET FIXTURES ###
+# GET FIXTURE BY MATCH ID
+@app.route('/schedule/fixture/<matchId>', methods=['GET'])
+def get_fixture_by_id(matchId):
+    try:
+        club_name = request.args.get('clubName')
+        age_group = request.args.get('ageGroup')
+        division = request.args.get('division')
+
+        fixture_ref = (db.collection('clubs').document(club_name)
+                       .collection('ageGroups').document(age_group)
+                       .collection('divisions').document(division)
+                       .collection('fixtures').document(matchId))
+
+        fixture = fixture_ref.get()
+
+        if not fixture.exists:
+            return jsonify({"error": "Fixture not found"}), 404
+
+        return jsonify(fixture.to_dict()), 200
+
+    except Exception as e:
+        logging.error("Error fetching fixture by ID: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+# GET ALL FIXTURES
+@app.route('/schedule/fixtures', methods=['GET'])
+def get_all_fixtures():
+    try:
+        club_name = request.args.get('clubName')
+        age_group = request.args.get('ageGroup')
+        division = request.args.get('division')
+
+        fixtures_ref = (db.collection('clubs').document(club_name)
+                        .collection('ageGroups').document(age_group)
+                        .collection('divisions').document(division)
+                        .collection('fixtures'))
+
+        fixtures = [fixture.to_dict() for fixture in fixtures_ref.stream()]
+        return jsonify(fixtures), 200
+
+    except Exception as e:
+        logging.error("Error fetching all fixtures: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+# GET FIXTURES BY MONTH
+@app.route('/schedule/fixture', methods=['GET'])
+def get_fixtures():
+    try:
+        month = request.args.get('month')
         club_name = request.args.get('clubName')
         age_group = request.args.get('ageGroup')
         division = request.args.get('division')
@@ -179,91 +184,163 @@ def get_trainings():
         if not month or not age_group or not division:
             return jsonify({"error": "Month, age group, and division are required"}), 400
 
-        trainings_ref = db.collection('trainings')
-        query = trainings_ref.where('clubName', '==', club_name).where('ageGroup', '==', age_group).where('division', '==', division)
+        fixtures_ref = (db.collection('clubs').document(club_name)
+                        .collection('ageGroups').document(age_group)
+                        .collection('divisions').document(division)
+                        .collection('fixtures'))
 
-        # Filter by month
-        trainings = [
-            training.to_dict()
-            for training in query.stream()
-            if training.to_dict()['date'].startswith(month)
+        fixtures = [
+            fixture.to_dict()
+            for fixture in fixtures_ref.stream()
+            if fixture.to_dict()['date'].startswith(month)
         ]
-
-        return jsonify(trainings), 200
+        return jsonify(fixtures), 200
 
     except Exception as e:
-        logging.error("Error fetching trainings: %s", e)
+        logging.error("Error fetching fixtures: %s", e)
         return jsonify({"error": "Internal server error"}), 500
 
 
-@app.route('/schedule/add-training', methods=['POST'])
+### CREATE TRAINING ###
+# CREATE TRAINING
+@app.route('/schedule/training', methods=['POST'])
 def add_training():
-    """
-    Add a new training session to the schedule.
-    """
     try:
         data = request.json
         training = {
             "trainingId": str(uuid.uuid4()),
-            "ageGroup": data['ageGroup'],
-            "division": data['division'],
             "date": data['date'],
             "location": data['location'],
             "notes": data.get('notes', ''),
             "createdBy": data['createdBy']
         }
-        db.collection('trainings').document(training['trainingId']).set(training)
+        (db.collection('clubs').document(data['clubName'])
+         .collection('ageGroups').document(data['ageGroup'])
+         .collection('divisions').document(data['division'])
+         .collection('trainings').document(training['trainingId']).set(training))
         return jsonify({"message": "Training session added successfully"}), 201
 
-    except KeyError as e:
-        return jsonify({"error": f"Missing key: {str(e)}"}), 400
     except Exception as e:
         logging.error("Error adding training session: %s", e)
         return jsonify({"error": "Internal server error"}), 500
 
-
-@app.route('/schedule/save-match-data', methods=['POST'])
-def save_tactics():
-    """
-    Save or update tactics for a specific match in the matches collection.
-    """
+### UPDATE TRAINING ###
+# UPDATE TRAINING
+@app.route('/schedule/training', methods=['PUT'])
+def update_training():
     try:
         data = request.json
-        match_id = data.get('matchId')
-        formation = data.get('formation')
-        strategy_notes = data.get('strategyNotes')
-        home_team_lineup = data.get('homeTeamLineup')
-        away_team_lineup = data.get('awayTeamLineup')
+        training_id = data['trainingId']
 
-        if not match_id or not formation:
-            return jsonify({"error": "matchId and formation are required"}), 400
+        training_update = {k: v for k, v in data.items() if k in ['date', 'location', 'notes']}
+        training_update['updatedAt'] = fs.SERVER_TIMESTAMP
 
-        match_ref = db.collection('matches').document(match_id)
-        match = match_ref.get()
+        (db.collection('clubs').document(data['clubName'])
+         .collection('ageGroups').document(data['ageGroup'])
+         .collection('divisions').document(data['division'])
+         .collection('trainings').document(training_id).update(training_update))
 
-        if not match.exists:
-            return jsonify({"error": "Match not found"}), 404
-
-        # Prepare the update data
-        tactics_update = {
-            "formation": formation,
-            "strategyNotes": strategy_notes if strategy_notes else "",
-            "updatedAt": fs.SERVER_TIMESTAMP,
-        }
-
-        # Only update lineups if they exist in the request
-        if home_team_lineup:
-            tactics_update["homeTeamLineup"] = home_team_lineup
-        if away_team_lineup:
-            tactics_update["awayTeamLineup"] = away_team_lineup
-
-        # Update the match document in the matches collection
-        match_ref.update(tactics_update)
-
-        return jsonify({"message": "Tactics saved successfully"}), 200
+        return jsonify({"message": "Training updated successfully"}), 200
 
     except Exception as e:
-        logging.error("Error saving tactics: %s", e)
+        logging.error("Error updating training: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+    
+
+### DELETE TRAINING ###
+# DELETE TRAINING
+@app.route('/schedule/training', methods=['DELETE'])
+def delete_training():
+    try:
+        training_id = request.args.get('trainingId')
+        club_name = request.args.get('clubName')
+        age_group = request.args.get('ageGroup')
+        division = request.args.get('division')
+
+        (db.collection('clubs').document(club_name)
+         .collection('ageGroups').document(age_group)
+         .collection('divisions').document(division)
+         .collection('trainings').document(training_id).delete())
+
+        return jsonify({"message": "Training deleted successfully"}), 200
+
+    except Exception as e:
+        logging.error("Error deleting training: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+### GET TRAINING ###
+# GET TRAINING BY TRAINING ID
+@app.route('/schedule/training/<trainingId>', methods=['GET'])
+def get_training_by_id(trainingId):
+    try:
+        club_name = request.args.get('clubName')
+        age_group = request.args.get('ageGroup')
+        division = request.args.get('division')
+
+        training_ref = (db.collection('clubs').document(club_name)
+                        .collection('ageGroups').document(age_group)
+                        .collection('divisions').document(division)
+                        .collection('trainings').document(trainingId))
+
+        training = training_ref.get()
+
+        if not training.exists:
+            return jsonify({"error": "Training not found"}), 404
+
+        return jsonify(training.to_dict()), 200
+
+    except Exception as e:
+        logging.error("Error fetching training by ID: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+# GET ALL TRAININGS
+@app.route('/schedule/trainings', methods=['GET'])
+def get_all_trainings():
+    try:
+        club_name = request.args.get('clubName')
+        age_group = request.args.get('ageGroup')
+        division = request.args.get('division')
+
+        trainings_ref = (db.collection('clubs').document(club_name)
+                         .collection('ageGroups').document(age_group)
+                         .collection('divisions').document(division)
+                         .collection('trainings'))
+
+        trainings = [training.to_dict() for training in trainings_ref.stream()]
+        return jsonify(trainings), 200
+
+    except Exception as e:
+        logging.error("Error fetching all trainings: %s", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+# GET TRAINING BY MONTH
+@app.route('/schedule/training', methods=['GET'])
+def get_trainings():
+    try:
+        month = request.args.get('month')
+        club_name = request.args.get('clubName')
+        age_group = request.args.get('ageGroup')
+        division = request.args.get('division')
+
+        if not month or not age_group or not division:
+            return jsonify({"error": "Month, age group, and division are required"}), 400
+
+        trainings_ref = (db.collection('clubs').document(club_name)
+                         .collection('ageGroups').document(age_group)
+                         .collection('divisions').document(division)
+                         .collection('trainings'))
+
+        trainings = [
+            training.to_dict()
+            for training in trainings_ref.stream()
+            if training.to_dict()['date'].startswith(month)
+        ]
+        return jsonify(trainings), 200
+
+    except Exception as e:
+        logging.error("Error fetching trainings: %s", e)
         return jsonify({"error": "Internal server error"}), 500
 
 

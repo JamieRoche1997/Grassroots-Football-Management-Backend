@@ -53,12 +53,21 @@ db = firestore.client()
 def offer_ride():
     try:
         data = request.json
+        club_name = data.get("clubName")
+        age_group = data.get("ageGroup")
+        division = data.get("division")
+        match_id = data.get("matchId")
 
         # Ensure matchId is provided
         if "matchId" not in data or not data["matchId"]:
             return jsonify({"error": "matchId is required"}), 400
 
-        ride_ref = db.collection("carpools").document()
+        ride_ref = (db.collection("clubs").document(club_name)
+                .collection("ageGroups").document(age_group)
+                .collection("divisions").document(division)
+                .collection("carpools").document())
+
+
         ride_data = {
             "id": ride_ref.id,
             "driverName": data["driverName"],
@@ -67,7 +76,7 @@ def offer_ride():
             "location": data["location"],
             "pickup": data["pickup"],
             "time": data["time"],
-            "matchId": data["matchId"],  # ✅ Store matchId
+            "matchId": match_id,  # ✅ Store matchId
             "matchDetails": data["matchDetails"],  # ✅ Store match details
         }
 
@@ -83,12 +92,25 @@ def offer_ride():
 @app.route("/carpool/rides", methods=["GET"])
 def get_rides():
     try:
-        rides = db.collection("carpools").stream()
+        club_name = request.args.get("clubName")
+        age_group = request.args.get("ageGroup")
+        division = request.args.get("division")
+
+        if not all([club_name, age_group, division]):
+            return jsonify({"error": "Missing required query parameters"}), 400
+
+        rides = (db.collection("clubs").document(club_name)
+                .collection("ageGroups").document(age_group)
+                .collection("divisions").document(division)
+                .collection("carpools").stream())
+
         ride_list = [{**ride.to_dict(), "id": ride.id} for ride in rides]
+
         return jsonify(ride_list), 200
+
     except Exception as e:
         logger.error("Error fetching rides: %s", str(e))
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # 📩 Request a Ride
@@ -98,11 +120,17 @@ def request_ride():
         data = request.json
         user_name = data.get("userName")
         ride_id = data.get("ride_id")
+        club_name = data.get("clubName")
+        age_group = data.get("ageGroup")
+        division = data.get("division")
 
         if not user_name or not ride_id:
             return jsonify({"error": "userName and ride_id are required"}), 400
 
-        ride_ref = db.collection("carpools").document(ride_id)
+        ride_ref = (db.collection("clubs").document(club_name)
+                .collection("ageGroups").document(age_group)
+                .collection("divisions").document(division)
+                .collection("carpools").document(ride_id))
         ride = ride_ref.get()
 
         if not ride.exists:
@@ -132,6 +160,9 @@ def request_ride():
 def cancel_ride():
     try:
         data = request.json
+        club_name = data.get("clubName")
+        age_group = data.get("ageGroup")
+        division = data.get("division")
         ride_id = data.get("rideId")  # ✅ Get ride ID from request body
 
         if not ride_id:
@@ -139,7 +170,10 @@ def cancel_ride():
 
         logger.info("Received request to cancel ride: %s", ride_id)  # ✅ Log received ride ID
 
-        ride_ref = db.collection("carpools").document(ride_id)
+        ride_ref = (db.collection("clubs").document(club_name)
+                .collection("ageGroups").document(age_group)
+                .collection("divisions").document(division)
+                .collection("carpools").document(ride_id))
         ride = ride_ref.get()
 
         if not ride.exists:
