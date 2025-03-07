@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ['authentication', 'user-management', 'team-management', 'schedule-management', 'player-ratings', 'match-ratings', 'carpool', 'payments', 'ai-chatbot']
+        service: ['authentication', 'team-management', 'schedule-management', 'match-management', 'carpool', 'payments', 'ai-chatbot', 'membership', 'profile']
       max-parallel: 4
 
     steps:

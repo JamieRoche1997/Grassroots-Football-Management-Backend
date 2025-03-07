@@ -16,6 +16,7 @@ CORS(app)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 # --------------------------------------------------------------------------------
 # 2) Utility to load secrets from Google Secret Manager
 # --------------------------------------------------------------------------------
@@ -69,20 +70,36 @@ openai_client = OpenAI(api_key=openai_api_key)
 # 5) Allowed function(s) for GPT
 #     We'll define just one function: "getUserClubInfo".
 # --------------------------------------------------------------------------------
+# Define TOOLS array using only GET endpoints from openapi.yaml
 TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "getUserClubInfo",
-            "description": "Retrieve the club info of a user by email (read-only).",
+            "name": "getPlayers",
+            "description": "Retrieve players for a specific club, age group, and division.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "email": {"type": "string", "description": "User email"}
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"}
                 },
-                "required": ["email"],
+                "required": ["clubName", "ageGroup", "division"]
             },
-        },
+            "returns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "email": {"type": "string"},
+                        "name": {"type": "string"},
+                        "position": {"type": "string"},
+                        "role": {"type": "string"}
+                    }
+                },
+                "description": "List of players with their details."
+            }
+        }
     },
     {
         "type": "function",
@@ -95,129 +112,217 @@ TOOLS = [
                     "clubName": {"type": "string"},
                     "county": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"},
-                },
+                    "division": {"type": "string"}
+                }
             },
-        },
+            "returns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "clubName": {"type": "string"},
+                        "county": {"type": "string"},
+                        "ageGroups": {"type": "array", "items": {"type": "string"}},
+                        "divisions": {"type": "array", "items": {"type": "string"}}
+                    }
+                },
+                "description": "List of clubs matching search criteria."
+            }
+        }
     },
     {
         "type": "function",
         "function": {
-            "name": "getPlayers",
-            "description": "Retrieve players for a club, age group, and division.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "clubName": {"type": "string"},
-                    "ageGroup": {"type": "string"},
-                    "division": {"type": "string"},
-                },
-                "required": ["clubName", "ageGroup", "division"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "getScheduledMatches",
-            "description": "Retrieve scheduled matches for a month, club, age group, and division.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "month": {"type": "string"},
-                    "clubName": {"type": "string"},
-                    "ageGroup": {"type": "string"},
-                    "division": {"type": "string"},
-                },
-                "required": ["month", "clubName", "ageGroup", "division"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "getScheduledTrainings",
-            "description": "Retrieve scheduled training sessions for a month, club, age group, and division.",
+            "name": "getFixturesByMonth",
+            "description": "Get fixtures for a given month.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "month": {"type": "string"},
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"},
+                    "division": {"type": "string"}
                 },
-                "required": ["month", "clubName", "ageGroup", "division"],
+                "required": ["month", "clubName", "ageGroup", "division"]
             },
-        },
+            "returns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "matchId": {"type": "string"},
+                        "homeTeam": {"type": "string"},
+                        "awayTeam": {"type": "string"},
+                        "date": {"type": "string", "format": "date-time"}
+                    }
+                },
+                "description": "List of fixtures for the given month."
+            }
+        }
     },
     {
         "type": "function",
         "function": {
-            "name": "getPlayerRatings",
-            "description": "Retrieve player ratings for a club, age group, and division.",
+            "name": "getAllFixtures",
+            "description": "Get all fixtures.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"},
+                    "division": {"type": "string"}
                 },
-                "required": ["clubName", "ageGroup", "division"],
+                "required": ["clubName", "ageGroup", "division"]
             },
-        },
+            "returns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "matchId": {"type": "string"},
+                        "homeTeam": {"type": "string"},
+                        "awayTeam": {"type": "string"},
+                        "date": {"type": "string", "format": "date-time"}
+                    }
+                },
+                "description": "List of all fixtures."
+            }
+        }
     },
     {
         "type": "function",
         "function": {
-            "name": "getMatchRatings",
-            "description": "Retrieve match ratings for a club, age group, and division.",
+            "name": "getTrainingsByMonth",
+            "description": "Get training sessions for a month.",
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "month": {"type": "string"},
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"},
+                    "division": {"type": "string"}
                 },
-                "required": ["clubName", "ageGroup", "division"],
+                "required": ["month", "clubName", "ageGroup", "division"]
             },
-        },
+            "returns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "trainingId": {"type": "string"},
+                        "date": {"type": "string", "format": "date-time"},
+                        "location": {"type": "string"},
+                        "notes": {"type": "string"}
+                    }
+                },
+                "description": "List of training sessions."
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "getLineups",
+            "description": "Retrieve match lineups.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "matchId": {"type": "string"},
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"}
+                },
+                "required": ["matchId", "clubName", "ageGroup", "division"]
+            },
+            "returns": {
+                "type": "object",
+                "properties": {
+                    "homeTeamLineup": {"type": "object"},
+                    "awayTeamLineup": {"type": "object"}
+                },
+                "description": "Lineups for both teams."
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "getEvents",
+            "description": "Retrieve events for a match.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "matchId": {"type": "string"},
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"}
+                },
+                "required": ["matchId", "clubName", "ageGroup", "division"]
+            },
+            "returns": {
+                "type": "array",
+                "items": {"type": "object"},
+                "description": "List of match events."
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "getResult",
+            "description": "Retrieve the result of a match.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "matchId": {"type": "string"},
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"}
+                },
+                "required": ["matchId", "clubName", "ageGroup", "division"]
+            },
+            "returns": {
+                "type": "object",
+                "properties": {
+                    "homeScore": {"type": "integer"},
+                    "awayScore": {"type": "integer"},
+                    "updatedAt": {"type": "string", "format": "date-time"}
+                },
+                "description": "Match result including scores and update timestamp."
+            }
+        }
     },
     {
         "type": "function",
         "function": {
             "name": "getRides",
-            "description": "Retrieve all available carpool rides.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "listProducts",
-            "description": "Retrieve products for a team in a club.",
+            "description": "Retrieve available rides for a team.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"},
+                    "division": {"type": "string"}
                 },
-                "required": ["clubName", "ageGroup", "division"],
+                "required": ["clubName", "ageGroup", "division"]
             },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "listTransactions",
-            "description": "Retrieve transaction history for a user.",
-            "parameters": {
-                "type": "object",
-                "properties": {"email": {"type": "string"}},
-                "required": ["email"],
-            },
-        },
-    },
+            "returns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"},
+                        "driverName": {"type": "string"},
+                        "seats": {"type": "integer"},
+                        "location": {"type": "string"},
+                        "time": {"type": "string"},
+                        "matchDetails": {"type": "string"}
+                    }
+                },
+                "description": "List of available carpool rides."
+            }
+        }
+    }
 ]
 
 
@@ -317,10 +422,10 @@ def query_ai():
 
                 reply = None
 
-                if fn_name == "getUserClubInfo":
+                if fn_name == "getPlayers":
                     reply = call_external_service(
-                        "getUserClubInfo",
-                        "/user/club-info",
+                        "getPlayers",
+                        "/club/players",
                         fn_args,
                         id_token,
                         user_message,
@@ -334,43 +439,51 @@ def query_ai():
                         id_token,
                         user_message,
                     )
-                elif fn_name == "getPlayers":
+                elif fn_name == "getFixturesByMonth":
                     reply = call_external_service(
-                        "getPlayers",
-                        "/club/players",
+                        "getFixturesByMonth",
+                        "/schedule/fixture",
                         fn_args,
                         id_token,
                         user_message,
                     )
-                elif fn_name == "getScheduledMatches":
+                elif fn_name == "getAllFixtures":
                     reply = call_external_service(
-                        "getScheduledMatches",
-                        "/schedule/matches",
+                        "getAllFixtures",
+                        "/schedule/fixtures",
                         fn_args,
                         id_token,
                         user_message,
                     )
-                elif fn_name == "getScheduledTrainings":
+                elif fn_name == "getTrainingsByMonth":
                     reply = call_external_service(
-                        "getScheduledTrainings",
-                        "/schedule/trainings",
+                        "getTrainingsByMonth",
+                        "/schedule/training",
                         fn_args,
                         id_token,
                         user_message,
                     )
-                elif fn_name == "getPlayerRatings":
+                elif fn_name == "getLineups":
                     reply = call_external_service(
-                        "getPlayerRatings",
-                        "/player/get-ratings",
+                        "getLineups",
+                        "/fixture/lineups",
                         fn_args,
                         id_token,
                         user_message,
                     )
-                elif fn_name == "getMatchRatings":
+                elif fn_name == "getEvents":
                     reply = call_external_service(
-                        "getMatchRatings",
-                        "/match/get-ratings",
+                        "getEvents",
+                        "/fixture/events",
                         fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "getResult":
+                    reply = call_external_service(
+                        "getResult",
+                        "/fixture/results",
+                        {},
                         id_token,
                         user_message,
                     )
@@ -378,22 +491,6 @@ def query_ai():
                     reply = call_external_service(
                         "getRides",
                         "/carpool/rides",
-                        {},
-                        id_token,
-                        user_message,
-                    )
-                elif fn_name == "listProducts":
-                    reply = call_external_service(
-                        "listProducts",
-                        "/products/list",
-                        fn_args,
-                        id_token,
-                        user_message,
-                    )
-                elif fn_name == "listTransactions":
-                    reply = call_external_service(
-                        "listTransactions",
-                        "/transactions/list",
                         fn_args,
                         id_token,
                         user_message,
@@ -439,7 +536,10 @@ Avoid raw JSON-like responses unless absolutely necessary.
 Explain the significance of the data where relevant.
 """,
             },
-            {"role": "user", "content": f"The user asked: {original_user_message}. Here is the data you retrieved: {json.dumps(data)}"},
+            {
+                "role": "user",
+                "content": f"The user asked: {original_user_message}. Here is the data you retrieved: {json.dumps(data)}",
+            },
         ]
 
         second_response = openai_client.chat.completions.create(

@@ -11,80 +11,13 @@ schemes:
   - https
 paths:
   # Authentication Microservice Routes
-  /signup:
+  /auth/create:
     post:
       x-google-backend:
-        address: https://microservice-authentication-180320540339.europe-west2.run.app/signup  
-      summary: Register a new user
-      description: Register a new user with email, password, and name
-      operationId: registerUser
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          description: User registration data
-          required: true
-          schema:
-            type: object
-            properties:
-              email:
-                type: string
-              password:
-                type: string
-              name:
-                type: string
-              role:
-                type: string
-      responses:
-        '201':
-          description: User registered successfully
-        '400':
-          description: Invalid input or email already exists
-        '500':
-          description: Internal server error
-
-  /signin:
-    post:
-      x-google-backend:
-        address: https://microservice-authentication-180320540339.europe-west2.run.app/signin  
-      summary: Sign in a user
-      description: Authenticate a user with an ID token
-      operationId: signInUser
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          description: User sign-in data
-          required: true
-          schema:
-            type: object
-            properties:
-              idToken:
-                type: string
-      responses:
-        '200':
-          description: User signed in successfully
-        '400':
-          description: Invalid input
-        '401':
-          description: Invalid or expired ID token
-        '500':
-          description: Internal server error
-
-  # User Management Microservice Routes
-  /user/create:
-    post:
-      x-google-backend:
-        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/create
-      summary: Create a new user in Firestore
-      description: Create a new user document in Firestore with email, name, and role
-      operationId: createUser
+        address: https://microservice-authentication-180320540339.europe-west2.run.app/auth/create
+      summary: Create a new user in Firebase Authentication
+      description: Creates a new user with email and password
+      operationId: createAuthUser
       consumes:
         - application/json
       produces:
@@ -97,37 +30,285 @@ paths:
           schema:
             type: object
             properties:
+              email:
+                type: string
+              password:
+                type: string
+      responses:
+        '201':
+          description: User created successfully
+        '400':
+          description: Invalid input or email already exists
+        '500':
+          description: Internal server error
+
+  /auth/login:
+    post:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app/auth/login
+      summary: Login a user
+      description: Verifies an ID token and logs in the user
+      operationId: loginUser
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ID token for authentication
+          required: true
+          schema:
+            type: object
+            properties:
+              idToken:
+                type: string
+      responses:
+        '200':
+          description: User logged in successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Invalid or expired ID token
+        '500':
+          description: Internal server error
+
+  /auth/{email}:
+    get:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Get user identity by email
+      description: Retrieves the UID and email from the authentication service
+      operationId: getUserByEmail
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: email
+          required: true
+          type: string
+      responses:
+        '200':
+          description: User retrieved successfully
+        '404':
+          description: User not found
+        '500':
+          description: Internal server error
+
+    patch:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Update user identity
+      description: Updates the UID for a given user in Firestore
+      operationId: updateUserByEmail
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: email
+          required: true
+          type: string
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
               uid:
                 type: string
+      responses:
+        '200':
+          description: User updated successfully
+        '400':
+          description: Invalid request
+        '500':
+          description: Internal server error
+
+    delete:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Delete user by email
+      description: Deletes a user from both Firebase Authentication and Firestore
+      operationId: deleteUserByEmail
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: email
+          required: true
+          type: string
+      responses:
+        '200':
+          description: User deleted successfully
+        '404':
+          description: User not found
+        '500':
+          description: Internal server error
+
+  /user:
+    post:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app/user
+      summary: Create a new user document
+      description: Creates a new user document in the Firestore database
+      operationId: createUser
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: User data for the new user
+          required: true
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+              uid:
+                type: string
+      responses:
+        '201':
+          description: User created successfully
+        '400':
+          description: Invalid input
+        '500':
+          description: Internal server error
+
+  # Profile Microservice Routes
+  /profile:
+    post:
+      x-google-backend:
+        address: https://microservice-profile-180320540339.europe-west2.run.app/profile
+      summary: Create a new user profile
+      description: Creates a new profile for a user in the Profile Service
+      operationId: createProfile
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Profile data for the new user
+          required: true
+          schema:
+            type: object
+            properties:
               email:
                 type: string
               name:
                 type: string
               role:
                 type: string
-              clubName:
-                type: string
-              ageGroup:
-                type: string
-              division:
-                type: string
+              position:
+                type: string    # Added
               userRegistered:
-                type: boolean
+                type: boolean   # Added
+              clubName:
+                type: string    # Added
+              ageGroup:
+                type: string    # Added
+              division:
+                type: string    # Added
       responses:
         '201':
-          description: User created successfully
+          description: Profile created successfully
         '400':
-          description: Invalid input or user already exists
+          description: Invalid input
         '500':
           description: Internal server error
-  
-  /user/update:
+
+  /profile/{email}:
+    get:
+      x-google-backend:
+        address: https://microservice-profile-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Retrieve a user profile
+      description: Fetches a profile from the Profile Service using email
+      operationId: getProfile
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: email
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Profile retrieved successfully
+        '404':
+          description: Profile not found
+        '500':
+          description: Internal server error
+
+    patch:
+      x-google-backend:
+        address: https://microservice-profile-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Update a user profile
+      description: Updates fields in an existing user profile
+      operationId: updateProfile
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: email
+          required: true
+          type: string
+        - in: body
+          name: body
+          description: Fields to update in the profile
+          required: true
+          schema:
+            type: object
+            additionalProperties: true  # This allows dynamic fields
+      responses:
+        '200':
+          description: Profile updated successfully
+        '400':
+          description: Invalid input
+        '500':
+          description: Internal server error
+
+    delete:
+      x-google-backend:
+        address: https://microservice-profile-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Delete a user profile
+      description: Deletes a profile from the Profile Service using email
+      operationId: deleteProfile
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: email
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Profile deleted successfully
+        '404':
+          description: Profile not found
+        '500':
+          description: Internal server error
+          
+  # Membership Microservice Routes
+  /membership:
     post:
       x-google-backend:
-        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/update  
-      summary: Update a user's profile
-      description: Update a user's profile in Firestore
-      operationId: updateUserProfile
+        address: https://microservice-membership-180320540339.europe-west2.run.app/membership
+      summary: Create a new membership
+      description: Creates a membership entry for a user in the Membership Service
+      operationId: createMembership
       consumes:
         - application/json
       produces:
@@ -135,7 +316,7 @@ paths:
       parameters:
         - in: body
           name: body
-          description: User profile data to update
+          description: Membership data for the new user
           required: true
           schema:
             type: object
@@ -144,62 +325,44 @@ paths:
                 type: string
               name:
                 type: string
+              dob:
+                type: string
+              uid:
+                type: string
+              clubName:
+                type: string 
+              ageGroup:
+                type: string
+              division:
+                type: string
+              role:
+                type: string
+              position:
+                type: string
+              userRegistered:
+                type: boolean
       responses:
-        '200':
-          description: User profile updated successfully
+        '201':
+          description: Membership created successfully
         '400':
           description: Invalid input
         '500':
           description: Internal server error
 
-  /user/check:
-    get:
+    patch:
       x-google-backend:
-        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/check  
-      summary: Check if a user exists
-      description: Check if a user exists in Firestore by email
-      operationId: checkUserExists
+        address: https://microservice-membership-180320540339.europe-west2.run.app/membership
+      summary: Update a user's membership
+      description: Updates fields in an existing membership record
+      operationId: updateMembership
+      consumes:
+        - application/json
       produces:
         - application/json
       parameters:
-        - in: query
-          name: email
-          description: The email of the user to check
+        - in: body
+          name: body
           required: true
-          type: string
-      responses:
-        '200':
-          description: Successful response indicating whether the user exists
-          schema:
-            type: object
-            properties:
-              exists:
-                type: boolean
-              message:
-                type: string
-        '400':
-          description: Missing or invalid email parameter
-        '500':
-          description: Internal server error
-
-  /user/club-info:
-    get:
-      x-google-backend:
-        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/club-info 
-      summary: Retrieve user's club information
-      description: Retrieve the club information of a user in Firestore by email
-      operationId: getUserClubInfo
-      produces:
-        - application/json
-      parameters:
-        - in: query
-          name: email
-          description: The email of the user to check
-          required: true
-          type: string
-      responses:
-        '200':
-          description: Successful response indicating the user's club information
           schema:
             type: object
             properties:
@@ -209,49 +372,134 @@ paths:
                 type: string
               division:
                 type: string
+              email:
+                type: string
+              role:
+                type: string
+              position:
+                type: string
+              userRegistered:
+                type: boolean
+      responses:
+        '200':
+          description: Membership updated successfully
         '400':
-          description: Missing or invalid email parameter
+          description: Invalid input
         '500':
           description: Internal server error
 
-  /user/update-match-event:
-    post:
+    get:
       x-google-backend:
-        address: https://microservice-user-management-180320540339.europe-west2.run.app/user/update-match-event
-      summary: Append a match event count to a player's document
-      operationId: updateUserMatchEvent
-      consumes:
-        - application/json
+        address: https://microservice-membership-180320540339.europe-west2.run.app/membership
+      summary: Retrieve a user's membership
+      description: Fetches membership data using query params (clubName, ageGroup, division, email)
+      operationId: getMembership
       produces:
         - application/json
       parameters:
-        - in: body
-          name: body
-          description: Match event details
+        - in: query
+          name: clubName
           required: true
-          schema:
-            type: object
-            required:
-              - playerName
-              - type
-            properties:
-              playerName:
-                type: string
-                description: The player's unique identifier
-              type:
-                type: string
-                enum: [goal, assist, injury, yellowCard, redCard]
-                description: Type of match event
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+        - in: query
+          name: email
+          required: true
+          type: string
       responses:
         '200':
-          description: Match event recorded successfully
-        '400':
-          description: Missing or invalid request data
+          description: Membership retrieved successfully
         '404':
-          description: Player not found
+          description: Membership not found
         '500':
           description: Internal server error
 
+    delete:
+      x-google-backend:
+        address: https://microservice-membership-180320540339.europe-west2.run.app/membership
+      summary: Delete a user's membership
+      description: Deletes a membership using query params (clubName, ageGroup, division, email)
+      operationId: deleteMembership
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+        - in: query
+          name: email
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Membership deleted successfully
+        '404':
+          description: Membership not found
+        '500':
+          description: Internal server error
+
+  /membership/team:
+    get:
+      x-google-backend:
+        address: https://microservice-membership-180320540339.europe-west2.run.app/membership/team
+      summary: Fetch all players for a team
+      description: Fetches all players using query params (clubName, ageGroup, division)
+      operationId: listTeamMembers
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of players retrieved successfully
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                email:
+                  type: string
+                role:
+                  type: string
+                position:
+                  type: string
+                userRegistered:
+                  type: boolean
+                joinedAt:
+                  type: string
+                updatedAt:
+                  type: string
+        '400':
+          description: Missing or invalid query parameters
+        '500':
+          description: Internal server error
 
   # Team Management Microservice Routes
   /club/create-join:
@@ -503,490 +751,337 @@ paths:
         '500':
           description: Internal server error
 
-  /club/players/remove:
-    post:
-      x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/players/remove
-      summary: Remove players from a club's roster
-      operationId: removePlayers
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          description: JSON object containing club details and player emails to remove
-          required: true
-          schema:
-            type: object
-            properties:
-              clubName:
-                type: string
-                description: The name of the club
-                example: "Cobh Ramblers"
-              ageGroup:
-                type: string
-                description: The age group of the players
-                example: "Professional"
-              division:
-                type: string
-                description: The division of the players
-                example: "Division Premier"
-              playerEmails:
-                type: array
-                items:
-                  type: string
-                description: List of player emails to remove from the club
-                example: ["player1@email.com", "player2@email.com"]
-      responses:
-        '200':
-          description: Players removed successfully
-        '400':
-          description: Missing or invalid parameters
-        '500':
-          description: Internal server error
-
   # Schedule Management Microservice Routes
-  /schedule/matches:
-    get:
-      x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/matches
-      summary: Retrieve scheduled matches
-      operationId: getScheduledMatches
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      description: Retrieve scheduled matches for a specific month, age group, and division.
-      parameters:
-        - name: month
-          in: query
-          description: The month to fetch matches for (format yyyy-MM).
-          required: true
-          type: string
-        - name: clubName
-          in: query
-          description: The club name to filter matches by.
-          required: true
-          type: string
-        - name: ageGroup
-          in: query
-          description: The age group to filter matches by.
-          required: true
-          type: string
-        - name: division
-          in: query
-          description: The division to filter matches by.
-          required: true
-          type: string
-      responses:
-        '200':
-          description: List of matches retrieved successfully.
-          schema:
-            type: array
-            items:
-              type: object
-              properties:
-                matchId:
-                  type: string
-                homeTeam:
-                  type: string
-                awayTeam:
-                  type: string
-                ageGroup:
-                  type: string
-                division:
-                  type: string
-                date:
-                  type: string
-                  format: date-time
-                result:
-                  type: object
-                  properties:
-                    homeScore:
-                      type: integer
-                    awayScore:
-                      type: integer
-        '400':
-          description: Missing or invalid query parameters.
-        '500':
-          description: Internal server error.
-
-  /schedule/add-fixture:
+  /schedule/fixture:
     post:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/add-fixture
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/fixture
       summary: Add a new fixture to the schedule.
       operationId: addFixture
       consumes:
         - application/json
       produces:
         - application/json
-      description: Add a new match fixture to the schedule with details such as teams, age group, and date.
       parameters:
         - in: body
           name: body
-          description: The details of the fixture to be added.
           required: true
           schema:
             type: object
-            required:
-              - homeTeam
-              - awayTeam
-              - ageGroup
-              - division
-              - date
-              - createdBy
+            required: [homeTeam, awayTeam, ageGroup, division, date, createdBy]
             properties:
               homeTeam:
                 type: string
-                description: The name of the home team.
               awayTeam:
                 type: string
-                description: The name of the away team.
               ageGroup:
                 type: string
-                description: The age group for the match.
               division:
                 type: string
-                description: The division for the match.
               date:
                 type: string
                 format: date-time
-                description: The scheduled date and time of the match.
               createdBy:
                 type: string
-                description: The email of the user creating the fixture.
       responses:
         '201':
           description: Fixture added successfully.
-        '400':
-          description: Missing or invalid request data.
         '500':
           description: Internal server error.
 
-  /schedule/update-result:
-    put:
-      x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/update-result
-      summary: Update a match result and events.
-      operationId: updateMatchResult
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      description: Update the result of a scheduled match with scores and events.
-      parameters:
-        - in: body
-          name: body
-          description: The match result and events data to be updated.
-          required: true
-          schema:
-            type: object
-            required:
-              - matchId
-              - homeScore
-              - awayScore
-            properties:
-              matchId:
-                type: string
-                description: The unique ID of the match to be updated.
-              homeScore:
-                type: integer
-                description: The score for the home team.
-              awayScore:
-                type: integer
-                description: The score for the away team.
-              events:
-                type: array
-                description: List of match events.
-                items:
-                  type: object
-                  properties:
-                    type:
-                      type: string
-                      enum: [goal, assist, injury, yellowCard, redCard]
-                      description: The type of event.
-                    playerName:
-                      type: string
-                      description: The name of the player involved in the event.
-                    minute:
-                      type: string
-                      description: The minute the event occurred.
-                    description:
-                      type: string
-                      description: Additional event details.
-      responses:
-        '200':
-          description: Match result and events updated successfully.
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Match result and events updated successfully"
-        '400':
-          description: Missing or invalid request data.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "matchId, homeScore, and awayScore are required"
-        '404':
-          description: Match not found.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "Match not found"
-        '500':
-          description: Internal server error.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "Internal server error"
-
-  /schedule/trainings:
     get:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/trainings
-      summary: Retrieve scheduled training sessions
-      operationId: getScheduledTrainings
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      description: Retrieve scheduled training sessions for a specific month, age group, and division.
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/fixture
+      summary: Get fixtures for a month.
+      operationId: getFixturesByMonth
       parameters:
-        - name: month
-          in: query
-          description: The month to fetch training sessions for (format yyyy-MM).
+        - in: query
+          name: month
           required: true
           type: string
-        - name: clubName
-          in: query
-          description: The club name to filter training sessions by.
+        - in: query
+          name: clubName
           required: true
           type: string
-        - name: ageGroup
-          in: query
-          description: The age group to filter training sessions by.
+        - in: query
+          name: ageGroup
           required: true
           type: string
-        - name: division
-          in: query
-          description: The division to filter training sessions by.
+        - in: query
+          name: division
           required: true
           type: string
       responses:
         '200':
-          description: List of training sessions retrieved successfully.
+          description: List of fixtures.
           schema:
             type: array
             items:
               type: object
-              properties:
-                trainingId:
-                  type: string
-                ageGroup:
-                  type: string
-                division:
-                  type: string
-                date:
-                  type: string
-                  format: date-time
-                location:
-                  type: string
-                notes:
-                  type: string
-                createdBy:
-                  type: string
-        '400':
-          description: Missing or invalid query parameters.
         '500':
           description: Internal server error.
 
-  /schedule/add-training:
-    post:
+    put:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/add-training
-      summary: Add a new training session to the schedule
-      operationId: addTrainingSession
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/fixture
+      summary: Update fixture details.
+      operationId: updateFixture
       consumes:
-        - application/json
-      produces:
-        - application/json
-      description: Add a new training session to the schedule with details such as age group, division, date, and location.
-      parameters:
-        - in: body
-          name: body
-          description: The details of the training session to be added.
-          required: true
-          schema:
-            type: object
-            required:
-              - ageGroup
-              - division
-              - date
-              - location
-              - createdBy
-            properties:
-              ageGroup:
-                type: string
-                description: The age group for the training session.
-              division:
-                type: string
-                description: The division for the training session.
-              date:
-                type: string
-                format: date-time
-                description: The scheduled date and time of the training session.
-              location:
-                type: string
-                description: The location where the training session will be held.
-              notes:
-                type: string
-                description: Any additional notes about the training session.
-              createdBy:
-                type: string
-                description: The email of the user creating the training session.
-      responses:
-        '201':
-          description: Training session added successfully.
-        '400':
-          description: Missing or invalid request data.
-        '500':
-          description: Internal server error.
-
-  /schedule/save-match-data:
-    post:
-      x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/save-match-data
-      summary: Save or update tactics for a match
-      description: Save or update tactics, formation, strategy notes, and team lineups in the matches collection.
-      operationId: saveMatchTactics
-      consumes:
-        - application/json
-      produces:
         - application/json
       parameters:
         - in: body
           name: body
-          description: Match tactics data to be saved
           required: true
           schema:
             type: object
-            required:
-              - matchId
-              - formation
+            required: [matchId, clubName, ageGroup, division]
             properties:
               matchId:
                 type: string
-                description: The unique identifier for the match.
-              formation:
+              homeTeam:
                 type: string
-                description: The team's selected formation.
-                example: "4-4-2"
-              strategyNotes:
+              awayTeam:
                 type: string
-                description: Coach's strategic notes for the match.
-                example: "Play high press in the first half."
-              homeTeamLineup:
-                type: object
-                description: The lineup for the home team (position to player ID mapping).
-                additionalProperties:
-                  type: string
-                example:
-                  GK: "player_uid_1"
-                  RB: "player_uid_2"
-                  CB: "player_uid_3"
-              awayTeamLineup:
-                type: object
-                description: The lineup for the away team (position to player ID mapping).
-                additionalProperties:
-                  type: string
-                example:
-                  GK: "player_uid_4"
-                  LB: "player_uid_5"
-                  CB: "player_uid_6"
+              date:
+                type: string
+                format: date-time
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
       responses:
         '200':
-          description: Tactics saved successfully.
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Tactics saved successfully"
-        '400':
-          description: Missing or invalid request data.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "matchId and formation are required"
-        '404':
-          description: Match not found.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "Match not found"
+          description: Fixture updated successfully.
         '500':
           description: Internal server error.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "Internal server error"
 
-  # Player Ratings Microservice Routes
-  /player/submit-rating:
+    delete:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/fixture
+      summary: Delete a fixture.
+      operationId: deleteFixture
+      parameters:
+        - in: query
+          name: matchId
+          required: true
+          type: string
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Fixture deleted successfully.
+        '500':
+          description: Internal server error.
+
+  /schedule/fixture/{matchId}:
+    get:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Get fixture by match ID.
+      operationId: getFixtureById
+      parameters:
+        - in: path
+          name: matchId
+          required: true
+          type: string
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Fixture details.
+        '404':
+          description: Fixture not found.
+        '500':
+          description: Internal server error.
+
+  /schedule/fixtures:
+    get:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/fixtures
+      summary: Get all fixtures for age group and division.
+      operationId: getAllFixtures
+      parameters:
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of all fixtures.
+        '500':
+          description: Internal server error.
+
+  /schedule/training:
     post:
       x-google-backend:
-        address: https://microservice-player-ratings-180320540339.europe-west2.run.app/player/submit-rating
-      summary: Submit a new player rating
-      description: Submit a new player rating with overall performance and skill ratings.
-      operationId: submitPlayerRating
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/training
+      summary: Add a training session.
+      operationId: addTraining
       consumes:
-        - application/json
-      produces:
         - application/json
       parameters:
         - in: body
           name: body
-          description: Player rating data to be submitted.
           required: true
           schema:
             type: object
-            required:
-              - playerEmail
-              - playerName
-              - clubName
-              - ageGroup
-              - division
-              - matchId
-              - ratedBy
-              - overallPerformance
-              - passingAccuracy
-              - shootingAccuracy
-              - defensiveWorkRate
-              - attackingContributions
-              - teamwork
-              - skill
-              - attitude
+            required: [date, location, createdBy]
             properties:
-              playerEmail:
+              date:
                 type: string
-              playerName:
+                format: date-time
+              location:
+                type: string
+              notes:
+                type: string
+              createdBy:
+                type: string
+      responses:
+        '201':
+          description: Training added successfully.
+        '500':
+          description: Internal server error.
+
+    get:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/training
+      summary: Get trainings for a month.
+      operationId: getTrainingsByMonth
+      parameters:
+        - in: query
+          name: month
+          required: true
+          type: string
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of trainings.
+          schema:
+            type: array
+            items:
+              type: object
+        '500':
+          description: Internal server error.
+
+    put:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/training
+      summary: Update training details.
+      operationId: updateTraining
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [trainingId]
+            properties:
+              trainingId:
+                type: string
+              date:
+                type: string
+                format: date-time
+              location:
+                type: string
+              notes:
+                type: string
+      responses:
+        '200':
+          description: Training updated successfully.
+        '500':
+          description: Internal server error.
+
+    delete:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/training
+      summary: Delete a training session.
+      operationId: deleteTraining
+      parameters:
+        - in: query
+          name: trainingId
+          required: true
+          type: string
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Training deleted successfully.
+        '500':
+          description: Internal server error.
+
+
+  # Match Ratings Microservice Routes
+  /fixture/lineups:
+    post:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/lineups
+      summary: Save initial lineups for a match
+      operationId: saveLineups
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [matchId, clubName, ageGroup, division, homeTeamLineup, awayTeamLineup]
+            properties:
+              matchId:
                 type: string
               clubName:
                 type: string
@@ -994,62 +1089,384 @@ paths:
                 type: string
               division:
                 type: string
-              matchId:
-                type: string
-              ratedBy:
-                type: string
-              overallPerformance:
-                type: integer
-              passingAccuracy:
-                type: integer
-              shootingAccuracy:
-                type: integer
-              defensiveWorkRate:
-                type: integer
-              attackingContributions:
-                type: integer
-              teamwork:
-                type: integer
-              skill:  
-                type: integer
-              attitude:  
-                type: integer
+              homeTeamLineup:
+                type: object
+              awayTeamLineup:
+                type: object
       responses:
         '201':
-          description: Player rating submitted successfully.
-        '400':
-          description: Missing or invalid request data.
-        '500':
-          description: Internal server error.
-
-  /player/get-ratings:
+          description: Lineups saved successfully.
     get:
       x-google-backend:
-        address: https://microservice-player-ratings-180320540339.europe-west2.run.app/player/get-ratings
-      summary: Retrieve player ratings
-      description: Retrieves ratings for all players in a given club.
-      operationId: getPlayerRatings
-      produces:
-        - application/json
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/lineups
+      summary: Retrieve lineups for a match
+      operationId: getLineups
       parameters:
         - in: query
+          name: matchId
+          required: true
+          type: string
+        - in: query
           name: clubName
-          description: The club name to filter player ratings by.
           required: true
           type: string
         - in: query
           name: ageGroup
-          description: The age group to filter player ratings by.
           required: true
           type: string
         - in: query
           name: division
-          description: The division to filter player ratings by.
           required: true
           type: string
       responses:
         '200':
-          description: List of player ratings retrieved successfully.
+          description: Lineups retrieved successfully.
+    patch:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/lineups
+      summary: Update existing lineups for a match
+      operationId: updateLineups
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [matchId, clubName, ageGroup, division]
+            properties:
+              matchId:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              homeTeamLineup:
+                type: object
+              awayTeamLineup:
+                type: object
+      responses:
+        '200':
+          description: Lineups updated successfully.
+    delete:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/lineups
+      summary: Delete lineups for a match
+      operationId: deleteLineups
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [matchId, clubName, ageGroup, division]
+            properties:
+              matchId:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+      responses:
+        '200':
+          description: Lineups deleted successfully.
+
+  /fixture/events:
+    post:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/events
+      summary: Add a new event to a match
+      operationId: addEvent
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [matchId, clubName, ageGroup, division, event]
+            properties:
+              matchId:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              event:
+                type: object
+      responses:
+        '201':
+          description: Event added successfully.
+    get:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/events
+      summary: Retrieve all events for a match
+      operationId: getEvents
+      parameters:
+        - in: query
+          name: matchId
+          required: true
+          type: string
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Events retrieved successfully.
+    patch:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/events
+      summary: Update an existing match event
+      operationId: updateEvent
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [matchId, clubName, ageGroup, division, eventId, event]
+            properties:
+              matchId:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              eventId:
+                type: string
+              event:
+                type: object
+      responses:
+        '200':
+          description: Event updated successfully.
+    delete:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/events
+      summary: Delete a specific event from a match
+      operationId: deleteEvent
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [matchId, clubName, ageGroup, division, eventId]
+            properties:
+              matchId:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              eventId:
+                type: string
+      responses:
+        '200':
+          description: Event deleted successfully.
+
+  /fixture/results:
+    post:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/results
+      summary: Save initial match result
+      operationId: saveResult
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [matchId, clubName, ageGroup, division, homeScore, awayScore]
+            properties:
+              matchId:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              homeScore:
+                type: integer
+              awayScore:
+                type: integer
+      responses:
+        '201':
+          description: Result saved successfully.
+    get:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/results
+      summary: Retrieve match result
+      operationId: getResult
+      parameters:
+        - in: query
+          name: matchId
+          required: true
+          type: string
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Result retrieved successfully.
+    patch:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/results
+      summary: Update match result
+      operationId: updateResult
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [matchId, clubName, ageGroup, division]
+            properties:
+              homeScore:
+                type: integer
+              awayScore:
+                type: integer
+      responses:
+        '200':
+          description: Result updated successfully.
+    delete:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/results
+      summary: Delete match result
+      operationId: deleteResult
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [matchId, clubName, ageGroup, division]
+            properties:
+              matchId:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+      responses:
+        '200':
+          description: Result deleted successfully.
+        '404':
+          description: Result not found.
+        '500':
+          description: Internal server error.
+
+  /fixture/player:
+    post:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/player
+      summary: Submit or overwrite player rating for a match
+      description: Submits or overwrites player rating with dynamically accepted fields.
+      operationId: submitPlayerRating
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [clubName, ageGroup, division, matchId, playerEmail]
+            properties:
+              clubName:
+                type: string
+                description: The name of the club.
+              ageGroup:
+                type: string
+                description: The age group (e.g., U12).
+              division:
+                type: string
+                description: The division (e.g., Premier).
+              matchId:
+                type: string
+                description: The match ID.
+              playerEmail:
+                type: string
+                description: The email of the player being rated.
+            additionalProperties:  # This allows any other rating fields to be dynamically accepted.
+              type: number
+              description: Any additional player rating metric (e.g., pace, passingAccuracy, teamwork).
+      responses:
+        '201':
+          description: Player rating submitted successfully.
+        '400':
+          description: Missing required fields or invalid input.
+        '500':
+          description: Internal server error.
+
+    get:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/player
+      summary: Retrieve a player rating for a match
+      description: Fetches a player rating for a specific match.
+      operationId: getPlayerRating
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: matchId
+          required: true
+          type: string
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of player ratings for the match.
           schema:
             type: array
             items:
@@ -1057,196 +1474,82 @@ paths:
               properties:
                 playerEmail:
                   type: string
-                  description: The email of the player.
-                playerName:
+                createdAt:
                   type: string
-                  description: The name of the player.
-                averageRating:
+                  format: date-time
+                additionalProperties:
                   type: number
-                  format: float
-                  description: The player's average rating.
-                totalVotes:
-                  type: integer
-                  description: The total number of votes received.
-        '400':
-          description: Missing or invalid query parameters.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "Missing clubName, ageGroup, or division"
         '500':
           description: Internal server error.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "Internal server error"
 
-  # Match Ratings Microservice Routes
-  /match/submit-rating:
-    post:
+    patch:
       x-google-backend:
-        address: https://microservice-match-ratings-180320540339.europe-west2.run.app/match/submit-rating
-      summary: Submit a new match rating
-      description: Allows users to submit ratings for a match based on overall quality, refereeing, and atmosphere.
-      operationId: submitMatchRating
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/player
+      summary: Update player rating fields for a match
+      description: Allows partial updates to player ratings, dynamically accepting new fields.
+      operationId: updatePlayerRating
       consumes:
-        - application/json
-      produces:
         - application/json
       parameters:
         - in: body
           name: body
-          description: Match rating data to be submitted.
           required: true
           schema:
             type: object
-            required:
-              - matchId
-              - clubName
-              - ageGroup
-              - division
-              - ratedBy
-              - overallQuality
-              - refereeingPerformance
-              - homeTeamPerformance
-              - awayTeamPerformance
-              - sportsmanship
-              - crowdAtmosphere
+            required: [clubName, ageGroup, division, matchId, playerEmail]
             properties:
-              matchId:
-                type: string
-                description: The match ID for which the rating is given.
               clubName:
                 type: string
-                description: The club name associated with the match.
               ageGroup:
                 type: string
-                description: The age group of the match.
               division:
                 type: string
-                description: The division of the match.
-              ratedBy:
+              matchId:
                 type: string
-                description: The email of the user submitting the rating.
-              overallQuality:
-                type: integer
-                description: Overall match quality rating (1-10).
-                minimum: 1
-                maximum: 10
-              refereeingPerformance:
-                type: integer
-                description: Referee performance rating (1-10).
-                minimum: 1
-                maximum: 10
-              homeTeamPerformance:
-                type: integer
-                description: Home team performance rating (1-10).
-                minimum: 1
-                maximum: 10
-              awayTeamPerformance:
-                type: integer
-                description: Away team performance rating (1-10).
-                minimum: 1
-                maximum: 10
-              sportsmanship:
-                type: integer
-                description: Sportsmanship rating (1-10).
-                minimum: 1
-                maximum: 10
-              crowdAtmosphere:
-                type: integer
-                description: Crowd atmosphere rating (1-10).
-                minimum: 1
-                maximum: 10
-      responses:
-        '201':
-          description: Match rating submitted successfully.
-          schema:
-            type: object
-            properties:
-              message:
+              playerEmail:
                 type: string
-                example: "Match rating submitted successfully"
-        '400':
-          description: Missing or invalid request data.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "matchId, ratedBy, and ratings are required"
-        '500':
-          description: Internal server error.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "Internal server error"
-
-  /match/get-ratings:
-    get:
-      x-google-backend:
-        address: https://microservice-match-ratings-180320540339.europe-west2.run.app/match/get-ratings
-      summary: Retrieve match ratings
-      description: Retrieves ratings for all matches in a given club, age group, and division.
-      operationId: getMatchRatings
-      produces:
-        - application/json
-      parameters:
-        - in: query
-          name: clubName
-          description: The club name to filter match ratings by.
-          required: true
-          type: string
-        - in: query
-          name: ageGroup
-          description: The age group to filter match ratings by.
-          required: true
-          type: string
-        - in: query
-          name: division
-          description: The division to filter match ratings by.
-          required: true
-          type: string
+            additionalProperties:
+              type: number
+              description: Any additional player rating metric to update.
       responses:
         '200':
-          description: List of match ratings retrieved successfully.
-          schema:
-            type: array
-            items:
-              type: object
-              properties:
-                matchId:
-                  type: string
-                  description: The unique identifier of the match.
-                averageRating:
-                  type: number
-                  format: float
-                  description: The average match rating.
-                totalVotes:
-                  type: integer
-                  description: The total number of votes received.
+          description: Player rating updated successfully.
         '400':
-          description: Missing or invalid query parameters.
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: "Missing clubName, ageGroup, or division"
+          description: No valid fields provided for update.
         '500':
           description: Internal server error.
+
+    delete:
+      x-google-backend:
+        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/player
+      summary: Delete player rating for a match
+      description: Deletes a player’s rating for a specific match.
+      operationId: deletePlayerRating
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
           schema:
             type: object
+            required: [clubName, ageGroup, division, matchId, playerEmail]
             properties:
-              error:
+              clubName:
                 type: string
-                example: "Internal server error"
+              ageGroup:
+                type: string
+              division:
+                type: string
+              matchId:
+                type: string
+              playerEmail:
+                type: string
+      responses:
+        '200':
+          description: Player rating deleted successfully.
+        '500':
+          description: Internal server error.
 
   # Carpool Microservice Routes
   /carpool/offer:
@@ -1322,14 +1625,30 @@ paths:
     get:
       x-google-backend:
         address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/rides
-      summary: Retrieve available rides
-      description: Retrieves a list of all carpool rides offered.
+      summary: Retrieve available rides for a specific team
+      description: Retrieves a list of all carpool rides for the given club, age group, and division.
       operationId: getRides
       produces:
         - application/json
+      parameters:
+        - in: query
+          name: clubName
+          type: string
+          description: Name of the club
+          required: true
+        - in: query
+          name: ageGroup
+          type: string
+          description: Age group (e.g., U12, U14)
+          required: true
+        - in: query
+          name: division
+          type: string
+          description: Division (e.g., Premier, First Division)
+          required: true
       responses:
         '200':
-          description: List of available rides
+          description: List of available rides for the specified team
           schema:
             type: array
             items:
@@ -1337,24 +1656,46 @@ paths:
               properties:
                 id:
                   type: string
+                  description: Unique identifier for the ride
                 driverName:
                   type: string
+                  description: Name of the driver offering the ride
                 seats:
                   type: integer
+                  description: Number of available seats
                 location:
                   type: string
+                  description: Pickup location for the ride
                 pickup:
                   type: string
                   enum: ["Yes", "No"]
+                  description: Indicates whether pickup is required
                 time:
                   type: string
                   format: time
+                  description: Time of departure
                 matchId:
                   type: string
+                  description: ID of the match this ride is for
                 matchDetails:
                   type: string
+                  description: Brief details about the match
+        '400':
+          description: Missing required query parameters
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Missing required query parameters
         '500':
           description: Internal server error
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Internal server error
 
   /carpool/request:
     post:
@@ -1808,6 +2149,18 @@ paths:
         - application/json
       parameters:
         - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+        - in: query
           name: email
           description: The email of the user whose transactions should be retrieved.
           required: true
@@ -1970,6 +2323,81 @@ paths:
               error:
                 type: string
                 example: "Internal server error"
+
+  /payments:
+    get:
+      x-google-backend:
+        address: https://microservice-payments-180320540339.europe-west2.run.app/payments
+      summary: Retrieve all payments for a specific team
+      description: Retrieves a list of all payments for the given club, age group, and division.
+      operationId: getPayments
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          type: string
+          description: Name of the club
+          required: true
+        - in: query
+          name: ageGroup
+          type: string
+          description: Age group (e.g., U12, U14)
+          required: true
+        - in: query
+          name: division
+          type: string
+          description: Division (e.g., Premier, First Division)
+          required: true
+      responses:
+        '200':
+          description: List of payments for the specified team
+          schema:
+            type: object
+            properties:
+              payments:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Unique identifier for the payment
+                    amount:
+                      type: number
+                      format: float
+                      description: Amount paid
+                    currency:
+                      type: string
+                      description: Currency of the payment (e.g., EUR, USD)
+                    status:
+                      type: string
+                      description: Status of the payment (e.g., Completed, Pending)
+                    timestamp:
+                      type: string
+                      format: date-time
+                      description: Timestamp of when the payment was made
+                    purchasedItems:
+                      type: array
+                      items:
+                        type: string
+                      description: List of items purchased in the transaction
+        '400':
+          description: Missing required query parameters
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Missing required query parameters
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Internal server error
 
   # AI Assistant Microservice Routes
   /query-ai:

@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Set the PORT environment variable
-ENV PORT=8081
+ENV PORT=8089
 
 # Expose port and run the service
 EXPOSE $PORT
