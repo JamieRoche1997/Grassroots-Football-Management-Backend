@@ -2483,3 +2483,244 @@ paths:
           description: Forbidden - Email mismatch (token does not match provided email)
         '500':
           description: Internal server error
+
+  # Player Stats Microservice Routes
+  /stats/update:
+    post:
+      x-google-backend:
+        address: https://microservice-player-stats-180320540339.europe-west2.run.app/stats/update
+      summary: Update player stats based on match events
+      description: Updates player stats such as goals, assists, yellow cards, red cards, and games played.
+      operationId: updatePlayerStats
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Player event details for updating stats
+          required: true
+          schema:
+            type: object
+            required:
+              - clubName
+              - ageGroup
+              - division
+              - playerEmail
+              - playerName
+              - eventType
+            properties:
+              clubName:
+                type: string
+                description: The name of the club
+              ageGroup:
+                type: string
+                description: The player's age group
+              division:
+                type: string
+                description: The player's division
+              playerEmail:
+                type: string
+                description: Email of the player whose stats are being updated
+              playerName:
+                type: string
+                description: Full name of the player
+              eventType:
+                type: string
+                enum: ["goal", "assist", "yellowCard", "redCard"]
+                description: The type of event that affects the player's stats
+      responses:
+        '200':
+          description: Player stats updated successfully
+        '400':
+          description: Missing or invalid request data
+        '500':
+          description: Internal server error
+
+  /stats/get:
+    get:
+      x-google-backend:
+        address: https://microservice-player-stats-180320540339.europe-west2.run.app/stats/get
+      summary: Retrieve player statistics
+      description: Fetches player statistics based on their email.
+      operationId: getPlayerStats
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+        - in: query
+          name: playerEmail
+          required: true
+          type: string
+          description: The email of the player whose stats are being retrieved
+      responses:
+        '200':
+          description: Player statistics retrieved successfully
+          schema:
+            type: object
+            properties:
+              playerEmail:
+                type: string
+              playerName:
+                type: string
+              goals:
+                type: integer
+              assists:
+                type: integer
+              yellowCards:
+                type: integer
+              redCards:
+                type: integer
+        '400':
+          description: Missing or invalid query parameters
+        '404':
+          description: Player stats not found
+        '500':
+          description: Internal server error
+
+  /stats/search:
+    get:
+      x-google-backend:
+        address: https://microservice-player-stats-180320540339.europe-west2.run.app/stats/search
+      summary: Search players by name
+      description: Searches for players based on a partial or full match of their name.
+      operationId: searchPlayersByName
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+        - in: query
+          name: playerName
+          required: true
+          type: string
+          description: The player's name (partial or full) to search for
+      responses:
+        '200':
+          description: List of matching players and their stats
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                playerEmail:
+                  type: string
+                playerName:
+                  type: string
+                goals:
+                  type: integer
+                assists:
+                  type: integer
+                yellowCards:
+                  type: integer
+                redCards:
+                  type: integer
+        '400':
+          description: Missing or invalid query parameters
+        '404':
+          description: No matching players found
+        '500':
+          description: Internal server error
+
+  /stats/list:
+    get:
+      x-google-backend:
+        address: https://microservice-player-stats-180320540339.europe-west2.run.app/stats/list
+      summary: Retrieve all player statistics and leaderboards
+      description: Lists all player statistics and identifies top performers for various categories.
+      operationId: listAllPlayerStats
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Player statistics leaderboard and all players' stats retrieved successfully
+          schema:
+            type: object
+            properties:
+              leaderboard:
+                type: object
+                properties:
+                  topScorer:
+                    type: object
+                    properties:
+                      playerName:
+                        type: string
+                      goals:
+                        type: integer
+                  mostAssists:
+                    type: object
+                    properties:
+                      playerName:
+                        type: string
+                      assists:
+                        type: integer
+                  mostYellowCards:
+                    type: object
+                    properties:
+                      playerName:
+                        type: string
+                      yellowCards:
+                        type: integer
+                  mostRedCards:
+                    type: object
+                    properties:
+                      playerName:
+                        type: string
+                      redCards:
+                        type: integer
+              allPlayers:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    playerEmail:
+                      type: string
+                    playerName:
+                      type: string
+                    goals:
+                      type: integer
+                    assists:
+                      type: integer
+                    yellowCards:
+                      type: integer
+                    redCards:
+                      type: integer
+        '400':
+          description: Missing or invalid query parameters
+        '500':
+          description: Internal server error

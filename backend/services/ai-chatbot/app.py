@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 import os
 import requests
 from openai import OpenAI
@@ -82,9 +83,9 @@ TOOLS = [
                 "properties": {
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"}
+                    "division": {"type": "string"},
                 },
-                "required": ["clubName", "ageGroup", "division"]
+                "required": ["clubName", "ageGroup", "division"],
             },
             "returns": {
                 "type": "array",
@@ -94,12 +95,42 @@ TOOLS = [
                         "email": {"type": "string"},
                         "name": {"type": "string"},
                         "position": {"type": "string"},
-                        "role": {"type": "string"}
-                    }
+                        "role": {"type": "string"},
+                    },
                 },
-                "description": "List of players with their details."
-            }
-        }
+                "description": "List of players with their details.",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "listTeamMembers",
+            "description": "Fetches all players using query params (clubName, ageGroup, division)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                },
+                "required": ["clubName", "ageGroup", "division"],
+            },
+            "returns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "email": {"type": "string"},
+                        "position": {"type": "string"},
+                        "role": {"type": "string"},
+                        "joinedAt": {"type": "string"},
+                        "updatedAt": {"type": "string"},
+                    },
+                },
+                "description": "List of players with their details.",
+            },
+        },
     },
     {
         "type": "function",
@@ -112,8 +143,8 @@ TOOLS = [
                     "clubName": {"type": "string"},
                     "county": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"}
-                }
+                    "division": {"type": "string"},
+                },
             },
             "returns": {
                 "type": "array",
@@ -123,12 +154,12 @@ TOOLS = [
                         "clubName": {"type": "string"},
                         "county": {"type": "string"},
                         "ageGroups": {"type": "array", "items": {"type": "string"}},
-                        "divisions": {"type": "array", "items": {"type": "string"}}
-                    }
+                        "divisions": {"type": "array", "items": {"type": "string"}},
+                    },
                 },
-                "description": "List of clubs matching search criteria."
-            }
-        }
+                "description": "List of clubs matching search criteria.",
+            },
+        },
     },
     {
         "type": "function",
@@ -141,9 +172,9 @@ TOOLS = [
                     "month": {"type": "string"},
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"}
+                    "division": {"type": "string"},
                 },
-                "required": ["month", "clubName", "ageGroup", "division"]
+                "required": ["month", "clubName", "ageGroup", "division"],
             },
             "returns": {
                 "type": "array",
@@ -153,12 +184,12 @@ TOOLS = [
                         "matchId": {"type": "string"},
                         "homeTeam": {"type": "string"},
                         "awayTeam": {"type": "string"},
-                        "date": {"type": "string", "format": "date-time"}
-                    }
+                        "date": {"type": "string", "format": "date-time"},
+                    },
                 },
-                "description": "List of fixtures for the given month."
-            }
-        }
+                "description": "List of fixtures for the given month.",
+            },
+        },
     },
     {
         "type": "function",
@@ -170,9 +201,9 @@ TOOLS = [
                 "properties": {
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"}
+                    "division": {"type": "string"},
                 },
-                "required": ["clubName", "ageGroup", "division"]
+                "required": ["clubName", "ageGroup", "division"],
             },
             "returns": {
                 "type": "array",
@@ -182,12 +213,12 @@ TOOLS = [
                         "matchId": {"type": "string"},
                         "homeTeam": {"type": "string"},
                         "awayTeam": {"type": "string"},
-                        "date": {"type": "string", "format": "date-time"}
-                    }
+                        "date": {"type": "string", "format": "date-time"},
+                    },
                 },
-                "description": "List of all fixtures."
-            }
-        }
+                "description": "List of all fixtures.",
+            },
+        },
     },
     {
         "type": "function",
@@ -200,9 +231,9 @@ TOOLS = [
                     "month": {"type": "string"},
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"}
+                    "division": {"type": "string"},
                 },
-                "required": ["month", "clubName", "ageGroup", "division"]
+                "required": ["month", "clubName", "ageGroup", "division"],
             },
             "returns": {
                 "type": "array",
@@ -212,12 +243,12 @@ TOOLS = [
                         "trainingId": {"type": "string"},
                         "date": {"type": "string", "format": "date-time"},
                         "location": {"type": "string"},
-                        "notes": {"type": "string"}
-                    }
+                        "notes": {"type": "string"},
+                    },
                 },
-                "description": "List of training sessions."
-            }
-        }
+                "description": "List of training sessions.",
+            },
+        },
     },
     {
         "type": "function",
@@ -230,19 +261,19 @@ TOOLS = [
                     "matchId": {"type": "string"},
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"}
+                    "division": {"type": "string"},
                 },
-                "required": ["matchId", "clubName", "ageGroup", "division"]
+                "required": ["matchId", "clubName", "ageGroup", "division"],
             },
             "returns": {
                 "type": "object",
                 "properties": {
                     "homeTeamLineup": {"type": "object"},
-                    "awayTeamLineup": {"type": "object"}
+                    "awayTeamLineup": {"type": "object"},
                 },
-                "description": "Lineups for both teams."
-            }
-        }
+                "description": "Lineups for both teams.",
+            },
+        },
     },
     {
         "type": "function",
@@ -255,16 +286,16 @@ TOOLS = [
                     "matchId": {"type": "string"},
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"}
+                    "division": {"type": "string"},
                 },
-                "required": ["matchId", "clubName", "ageGroup", "division"]
+                "required": ["matchId", "clubName", "ageGroup", "division"],
             },
             "returns": {
                 "type": "array",
                 "items": {"type": "object"},
-                "description": "List of match events."
-            }
-        }
+                "description": "List of match events.",
+            },
+        },
     },
     {
         "type": "function",
@@ -277,20 +308,49 @@ TOOLS = [
                     "matchId": {"type": "string"},
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"}
+                    "division": {"type": "string"},
                 },
-                "required": ["matchId", "clubName", "ageGroup", "division"]
+                "required": ["matchId", "clubName", "ageGroup", "division"],
             },
             "returns": {
                 "type": "object",
                 "properties": {
                     "homeScore": {"type": "integer"},
                     "awayScore": {"type": "integer"},
-                    "updatedAt": {"type": "string", "format": "date-time"}
+                    "updatedAt": {"type": "string", "format": "date-time"},
                 },
-                "description": "Match result including scores and update timestamp."
-            }
-        }
+                "description": "Match result including scores and update timestamp.",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "getPlayerRating",
+            "description": "Fetches players rating for a specific match.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "matchId": {"type": "string"},
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                },
+                "required": ["matchId", "clubName", "ageGroup", "division"],
+            },
+            "returns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "playerEmail": {"type": "string"},
+                        "createdAt": {"type": "string"},
+                        "additionalProperties": {"type": "number"},
+                    },
+                },
+                "description": "List of player ratings for the match.",
+            },
+        },
     },
     {
         "type": "function",
@@ -302,9 +362,9 @@ TOOLS = [
                 "properties": {
                     "clubName": {"type": "string"},
                     "ageGroup": {"type": "string"},
-                    "division": {"type": "string"}
+                    "division": {"type": "string"},
                 },
-                "required": ["clubName", "ageGroup", "division"]
+                "required": ["clubName", "ageGroup", "division"],
             },
             "returns": {
                 "type": "array",
@@ -316,13 +376,303 @@ TOOLS = [
                         "seats": {"type": "integer"},
                         "location": {"type": "string"},
                         "time": {"type": "string"},
-                        "matchDetails": {"type": "string"}
-                    }
+                        "matchDetails": {"type": "string"},
+                    },
                 },
-                "description": "List of available carpool rides."
-            }
-        }
-    }
+                "description": "List of available carpool rides.",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "listProducts",
+            "description": "Retrieve available products for a specific team inside a club.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                },
+                "required": ["clubName", "ageGroup", "division"],
+            },
+            "returns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "description": "Unique product ID from Firestore.",
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "Name of the product.",
+                        },
+                        "price": {
+                            "type": "number",
+                            "format": "float",
+                            "description": "Base price of the product in EUR.",
+                        },
+                        "installmentMonths": {
+                            "type": "integer",
+                            "description": "Number of months for installment plan (null for full payment).",
+                        },
+                        "category": {
+                            "type": "string",
+                            "description": "Category of the product.",
+                        },
+                        "isMembership": {
+                            "type": "boolean",
+                            "description": "Indicates if the product is a membership.",
+                        },
+                        "stripe_product_id": {
+                            "type": "string",
+                            "description": "The Stripe product ID linked to this product.",
+                        },
+                        "stripe_price_id": {
+                            "type": "string",
+                            "description": "The Stripe price ID linked to this product.",
+                        },
+                    },
+                },
+                "description": "List of available products for the specific team inside the club.",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "listTransactions",
+            "description": "Retrieve a user's transaction history, including completed and pending transactions with itemized details of purchased products.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                    "email": {"type": "string"},
+                },
+                "required": ["clubName", "ageGroup", "division", "email"],
+            },
+            "returns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "description": "Unique transaction ID.",
+                        },
+                        "amount": {
+                            "type": "number",
+                            "format": "float",
+                            "description": "Transaction amount in EUR.",
+                        },
+                        "currency": {
+                            "type": "string",
+                            "description": "Currency of the transaction.",
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": "Payment status (e.g., completed, pending).",
+                        },
+                        "club": {
+                            "type": "string",
+                            "description": "The club where the transaction was made.",
+                        },
+                        "ageGroup": {
+                            "type": "string",
+                            "description": "Age group related to the transaction.",
+                        },
+                        "division": {
+                            "type": "string",
+                            "description": "Division related to the transaction.",
+                        },
+                        "timestamp": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Timestamp when the transaction was recorded.",
+                        },
+                        "purchasedItems": {
+                            "type": "array",
+                            "description": "List of purchased products in the transaction.",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "productId": {
+                                        "type": "string",
+                                        "description": "Stripe price ID of the product.",
+                                    },
+                                    "productName": {
+                                        "type": "string",
+                                        "description": "Name of the purchased product.",
+                                    },
+                                    "category": {
+                                        "type": "string",
+                                        "description": "Category of the product.",
+                                        "enum": [
+                                            "membership",
+                                            "merchandise",
+                                            "training",
+                                            "match",
+                                            "other",
+                                        ],
+                                    },
+                                    "quantity": {
+                                        "type": "integer",
+                                        "description": "Quantity of the product purchased.",
+                                    },
+                                    "installmentMonths": {
+                                        "type": "integer",
+                                        "description": "Number of months for installment plan (null for one-time payment).",
+                                    },
+                                    "totalPrice": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "description": "Total price paid for this product.",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                "description": "List of transactions for the specified user, including itemized purchase details.",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "getPlayerStats",
+            "description": "Fetches player statistics based on their email.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                    "playerEmail": {"type": "string"},
+                },
+                "required": ["clubName", "ageGroup", "division", "playerEmail"],
+            },
+            "returns": {
+                "type": "object",
+                "properties": {
+                    "playerEmail": {"type": "string"},
+                    "playerName": {"type": "string"},
+                    "goals": {"type": "integer"},
+                    "assists": {"type": "integer"},
+                    "yellowCards": {"type": "integer"},
+                    "redCards": {"type": "integer"},
+                },
+                "description": "Fetches player statistics based on their email.",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "searchPlayersByName",
+            "description": "Searches for players based on a partial or full match of their name.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                    "playerName": {"type": "string"},
+                },
+                "required": ["clubName", "ageGroup", "division", "playerName"],
+            },
+            "returns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "playerEmail": {"type": "string"},
+                        "playerName": {"type": "string"},
+                        "goals": {"type": "integer"},
+                        "assists": {"type": "integer"},
+                        "yellowCards": {"type": "integer"},
+                        "redCards": {"type": "integer"},
+                    },
+                },
+                "description": "List of player ratings for the match.",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "listAllPlayerStats",
+            "description": "Retrieves all player statistics and identifies top performers for various categories.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "clubName": {"type": "string"},
+                    "ageGroup": {"type": "string"},
+                    "division": {"type": "string"},
+                },
+                "required": ["clubName", "ageGroup", "division"],
+            },
+            "returns": {
+                "type": "object",
+                "properties": {
+                    "leaderboard": {
+                        "type": "object",
+                        "properties": {
+                            "topScorer": {
+                                "type": "object",
+                                "properties": {
+                                    "playerName": {"type": "string"},
+                                    "goals": {"type": "integer"},
+                                },
+                            },
+                            "mostAssists": {
+                                "type": "object",
+                                "properties": {
+                                    "playerName": {"type": "string"},
+                                    "assists": {"type": "integer"},
+                                },
+                            },
+                            "mostYellowCards": {
+                                "type": "object",
+                                "properties": {
+                                    "playerName": {"type": "string"},
+                                    "yellowCards": {"type": "integer"},
+                                },
+                            },
+                            "mostRedCards": {
+                                "type": "object",
+                                "properties": {
+                                    "playerName": {"type": "string"},
+                                    "redCards": {"type": "integer"},
+                                },
+                            },
+                        },
+                    },
+                    "allPlayers": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "playerEmail": {"type": "string"},
+                                "playerName": {"type": "string"},
+                                "goals": {"type": "integer"},
+                                "assists": {"type": "integer"},
+                                "yellowCards": {"type": "integer"},
+                                "redCards": {"type": "integer"},
+                            },
+                        },
+                        "description": "List of all players and their statistics.",
+                    },
+                },
+                "description": "Leaderboard with top performers and all player statistics.",
+            },
+        },
+    },
 ]
 
 
@@ -331,6 +681,8 @@ TOOLS = [
 # --------------------------------------------------------------------------------
 SYSTEM_PROMPT = """\
 You are a helpful AI assistant for Grassroots Football Management.
+
+Today's date is {current_date}, formatted as YYYY-MM-DD (Year-Month-Day).
 
 You are assisting user {user_email}. Their club is {club_name}, age group is {age_group}, and division is {division}.
 
@@ -383,8 +735,12 @@ def query_ai():
             logger.error("Invalid Firebase token: %s", str(e))
             return jsonify({"error": "Invalid token"}), 401
 
+        # Get current date in YYYY-MM-DD format
+        current_date = datetime.now().strftime("%Y-%m-%d")
+
         # Build system + user messages
         system_prompt = SYSTEM_PROMPT.format(
+            current_date=current_date,
             user_email=user_email,
             club_name=club_name,
             age_group=age_group,
@@ -426,6 +782,15 @@ def query_ai():
                     reply = call_external_service(
                         "getPlayers",
                         "/club/players",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+
+                elif fn_name == "listTeamMembers":
+                    reply = call_external_service(
+                        "listTeamMembers",
+                        "/membership/team",
                         fn_args,
                         id_token,
                         user_message,
@@ -487,10 +852,58 @@ def query_ai():
                         id_token,
                         user_message,
                     )
+                elif fn_name == "getPlayerRating":
+                    reply = call_external_service(
+                        "getPlayerRating",
+                        "/fixture/player",
+                        {},
+                        id_token,
+                        user_message,
+                    )
                 elif fn_name == "getRides":
                     reply = call_external_service(
                         "getRides",
                         "/carpool/rides",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "listProducts":
+                    reply = call_external_service(
+                        "listProducts",
+                        "/products/list",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "listTransactions":
+                    reply = call_external_service(
+                        "listTransactions",
+                        "/transactions/list",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "getPlayerStats":
+                    reply = call_external_service(
+                        "getPlayerStats",
+                        "/stats/get",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "searchPlayersByName":
+                    reply = call_external_service(
+                        "searchPlayersByName",
+                        "/stats/search",
+                        fn_args,
+                        id_token,
+                        user_message,
+                    )
+                elif fn_name == "listAllPlayerStats":
+                    reply = call_external_service(
+                        "listAllPlayerStats",
+                        "/stats/list",
                         fn_args,
                         id_token,
                         user_message,
@@ -503,10 +916,38 @@ def query_ai():
 
             return jsonify({"reply": "\n".join(replies)}), 200
 
-        else:
-            # GPT gave a direct text response with no function call
-            final_text = msg.content
-            return jsonify({"reply": final_text}), 200
+        elif not msg.tool_calls:
+            # If no function call is made but relevant data is requested, force a function call.
+            if "players" in user_message.lower() or "members" in user_message.lower():
+                # If user is asking for team members, force a function call to listTeamMembers
+                fn_name = "listTeamMembers"
+            elif "fixtures" in user_message.lower():
+                # If user is asking for fixtures, force a function call to getAllFixtures
+                fn_name = "getAllFixtures"
+            elif (
+                "products" in user_message.lower()
+                or "merchandise" in user_message.lower()
+            ):
+                fn_name = "listProducts"
+            elif (
+                "transactions" in user_message.lower()
+                or "payments" in user_message.lower()
+            ):
+                fn_name = "listTransactions"
+            else:
+                # No relevant function to force call
+                final_text = msg.content
+                return jsonify({"reply": final_text}), 200
+
+            # If we reach here, it means we manually forced a function call
+            forced_reply = call_external_service(
+                fn_name,
+                f"/{fn_name.replace('list', '').replace('get', '').lower()}",
+                fn_args,
+                id_token,
+                user_message,
+            )
+            return jsonify({"reply": forced_reply}), 200
 
     except Exception as e:
         logger.exception("Error in /query-ai")
@@ -531,8 +972,11 @@ You have retrieved data from the {fn_name} endpoint.
 
 Your job is to convert this into a clear, helpful message for the user, who is a grassroots football manager.
 
-Use concise bullet points. Never show email addresses or sensitive data. Use plain text, do not use HTML or markdown language in the response.
-Avoid raw JSON-like responses unless absolutely necessary. 
+- **DO NOT** use markdown (`*`, `_`, `-`, `#`, `>`, backticks, etc.).
+- **DO NOT** format responses with markdown-style lists or bold/italic.
+- Use simple plain text.
+- Structure responses using clear sentence formatting.
+
 Explain the significance of the data where relevant.
 """,
             },
