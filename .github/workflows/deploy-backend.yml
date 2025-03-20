@@ -39,36 +39,11 @@ jobs:
             --image gcr.io/grassroots-football-management/microservice-${{ matrix.service }} \
             --platform managed \
             --region europe-west2 \
-            --no-allow-unauthenticated
-
-  apply-iam-policy:
-    needs: deploy  # Runs AFTER all services are deployed
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Authenticate with Google Cloud
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-
-      - name: Apply IAM Policy Binding to Services
-        run: |
-          for service in authentication team-management schedule-management match-management carpool payments ai-chatbot membership profile player-stats; do
-            echo "Updating IAM policy for service: microservice-${service}"
-            gcloud run services add-iam-policy-binding microservice-${service} \
-              --member=serviceAccount:api-gateway-sa@grassroots-football-management.iam.gserviceaccount.com \
-              --role=roles/run.invoker \
-              --region=europe-west2
-            sleep 5
-          done
+            --no-allow-unauthenticated        
 
   update-api-gateway:
     needs: 
       - deploy
-      - apply-iam-policy  # Runs AFTER IAM policies are applied
     runs-on: ubuntu-latest
 
     steps:
@@ -99,3 +74,30 @@ jobs:
             --api-config="v${API_VERSION}" \
             --location=europe-west2 \
             --project=grassroots-football-management
+  
+  apply-iam-policy:
+    needs: 
+      - deploy
+      - update-api-gateway
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code  # ✅ Ensure workspace is not empty
+        uses: actions/checkout@v3
+
+      - name: Authenticate with Google Cloud  # ✅ Authenticate AFTER checkout
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Apply IAM Policy to all microservices
+        run: |
+          for service in authentication team-management schedule-management match-management carpool payments ai-chatbot membership profile player-stats; do
+            gcloud run services add-iam-policy-binding microservice-$service \
+              --member=serviceAccount:api-gateway-sa@grassroots-football-management.iam.gserviceaccount.com \
+              --role=roles/run.invoker \
+              --region=europe-west2
+                    done  
