@@ -9,7 +9,7 @@ from firebase_admin.auth import (
     RevokedIdTokenError,
 )
 from flask_cors import CORS
-from google.cloud import firestore as fs, secretmanager
+from google.cloud import secretmanager
 
 # Initialise Flask app
 app = Flask(__name__)
