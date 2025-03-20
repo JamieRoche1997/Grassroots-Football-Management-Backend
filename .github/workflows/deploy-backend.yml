@@ -39,7 +39,12 @@ jobs:
             --image gcr.io/grassroots-football-management/microservice-${{ matrix.service }} \
             --platform managed \
             --region europe-west2 \
-            --allow-unauthenticated
+            --no-allow-unauthenticated
+
+          gcloud run services add-iam-policy-binding microservice-${{ matrix.service }} \
+            --member=serviceAccount:api-gateway-sa@grassroots-football-management.iam.gserviceaccount.com \
+            --role=roles/run.invoker \
+            --region=europe-west2
 
   update-api-gateway:
     needs: deploy  # This job will run after the microservices are deployed

@@ -1,6 +1,7 @@
 import json
 import os
 import logging
+from functools import wraps
 from flask import Flask, request, jsonify
 from firebase_admin import auth, credentials, firestore, initialize_app
 from firebase_admin.auth import (
@@ -59,12 +60,44 @@ db = firestore.client()
 # Collection reference
 users_ref = db.collection("users")
 
+def set_custom_claims(email, role):
+    """ Assigns a role to a user in Firebase Authentication """
+    user = auth.get_user_by_email(email)
+    auth.set_custom_user_claims(user.uid, {'role': role})
+    print(f"Assigned role '{role}' to user {email}")
+
+
+def role_required(*allowed_roles):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                id_token = request.headers.get("Authorization").split("Bearer ")[1]
+                decoded_token = auth.verify_id_token(id_token)
+                role = decoded_token.get("role")
+
+                # 🔹 Allow if the role is in the allowed_roles list
+                if role not in allowed_roles:
+                    return jsonify({"error": "Unauthorized"}), 403
+
+                return func(*args, **kwargs)
+
+            except (auth.InvalidIdTokenError, auth.ExpiredIdTokenError, auth.RevokedIdTokenError) as e:
+                logging.error("Authentication error: %s", str(e))
+                return jsonify({"error": "Authentication failed"}), 401
+
+        return wrapper
+    return decorator
+
+
 @app.route("/auth/create", methods=["POST"])
 def create_auth_user():
     try:
         data = request.json
         email = data["email"].strip().lower()
         password = data["password"]
+        role = data["role"]
+
 
         # Create user in Firebase Authentication only
         user_record = auth.create_user(
@@ -72,9 +105,13 @@ def create_auth_user():
             password=password,
         )
 
+        set_custom_claims(email, role)
+
         user_data = {
             "uid": user_record.uid,
             "email": email,
+            "role": role
+
         }
 
         users_ref.document(email).set(user_data)
@@ -97,10 +134,14 @@ def create_user():
     try:
         data = request.json
         email = data["email"].strip().lower()
+        role = data["role"]
+
+        set_custom_claims(email, role)
 
         user_data = {
             "email": email,
             "uid": data.get("uid", ""),
+            "role": role,
         }
 
         users_ref.document(email).set(user_data)
@@ -124,15 +165,14 @@ def login():
     try:
         data = request.json
         id_token = data["idToken"]
-
         decoded_token = auth.verify_id_token(id_token)
+
         uid = decoded_token.get("uid")
         email = decoded_token.get("email").strip().lower()
+        role = decoded_token.get("role")
 
-        user_doc = users_ref.document(email).get()
-
-        if not user_doc.exists:
-            return jsonify({"error": "User not found in Firestore"}), 404
+        if role not in ["coach", "player", "parent"]:
+            return jsonify({"error": "Invalid role"}), 403
 
         return jsonify({
             "message": "Login successful",

@@ -9,12 +9,27 @@ x-google-endpoints:
   allowCors: True
 schemes:
   - https
+
+securityDefinitions:
+  firebase:
+    type: oauth2
+    flow: "implicit"
+    authorizationUrl: ""
+    x-google-issuer: "https://securetoken.google.com/grassroots-football-management"
+    x-google-jwks_uri: "https://www.googleapis.com/service_accounts/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+    x-google-audiences: "grassroots-football-management"
+
+security:
+  - firebase: []
+
 paths:
   # Authentication Microservice Routes
   /auth/create:
     post:
       x-google-backend:
-        address: https://microservice-authentication-180320540339.europe-west2.run.app/auth/create
+        address: https://microservice-authentication-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      security: []
       summary: Create a new user in Firebase Authentication
       description: Creates a new user with email and password
       operationId: createAuthUser
@@ -45,7 +60,9 @@ paths:
   /auth/login:
     post:
       x-google-backend:
-        address: https://microservice-authentication-180320540339.europe-west2.run.app/auth/login
+        address: https://microservice-authentication-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      security: []
       summary: Login a user
       description: Verifies an ID token and logs in the user
       operationId: loginUser
@@ -78,6 +95,7 @@ paths:
       x-google-backend:
         address: https://microservice-authentication-180320540339.europe-west2.run.app
         path_translation: APPEND_PATH_TO_ADDRESS
+      security: []
       summary: Get user identity by email
       description: Retrieves the UID and email from the authentication service
       operationId: getUserByEmail
@@ -99,6 +117,7 @@ paths:
     patch:
       x-google-backend:
         address: https://microservice-authentication-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-authentication-180320540339.europe-west2.run.app
         path_translation: APPEND_PATH_TO_ADDRESS
       summary: Update user identity
       description: Updates the UID for a given user in Firestore
@@ -131,6 +150,7 @@ paths:
     delete:
       x-google-backend:
         address: https://microservice-authentication-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-authentication-180320540339.europe-west2.run.app
         path_translation: APPEND_PATH_TO_ADDRESS
       summary: Delete user by email
       description: Deletes a user from both Firebase Authentication and Firestore
@@ -153,7 +173,9 @@ paths:
   /user:
     post:
       x-google-backend:
-        address: https://microservice-authentication-180320540339.europe-west2.run.app/user
+        address: https://microservice-authentication-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-authentication-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Create a new user document
       description: Creates a new user document in the Firestore database
       operationId: createUser
@@ -185,7 +207,9 @@ paths:
   /profile:
     post:
       x-google-backend:
-        address: https://microservice-profile-180320540339.europe-west2.run.app/profile
+        address: https://microservice-profile-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-profile-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Create a new user profile
       description: Creates a new profile for a user in the Profile Service
       operationId: createProfile
@@ -229,6 +253,7 @@ paths:
     get:
       x-google-backend:
         address: https://microservice-profile-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-profile-180320540339.europe-west2.run.app
         path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve a user profile
       description: Fetches a profile from the Profile Service using email
@@ -251,6 +276,7 @@ paths:
     patch:
       x-google-backend:
         address: https://microservice-profile-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-profile-180320540339.europe-west2.run.app
         path_translation: APPEND_PATH_TO_ADDRESS
       summary: Update a user profile
       description: Updates fields in an existing user profile
@@ -282,6 +308,7 @@ paths:
     delete:
       x-google-backend:
         address: https://microservice-profile-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-profile-180320540339.europe-west2.run.app
         path_translation: APPEND_PATH_TO_ADDRESS
       summary: Delete a user profile
       description: Deletes a profile from the Profile Service using email
@@ -305,7 +332,9 @@ paths:
   /membership:
     post:
       x-google-backend:
-        address: https://microservice-membership-180320540339.europe-west2.run.app/membership
+        address: https://microservice-membership-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-membership-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Create a new membership
       description: Creates a membership entry for a user in the Membership Service
       operationId: createMembership
@@ -351,7 +380,9 @@ paths:
 
     patch:
       x-google-backend:
-        address: https://microservice-membership-180320540339.europe-west2.run.app/membership
+        address: https://microservice-membership-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-membership-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Update a user's membership
       description: Updates fields in an existing membership record
       operationId: updateMembership
@@ -390,7 +421,9 @@ paths:
 
     get:
       x-google-backend:
-        address: https://microservice-membership-180320540339.europe-west2.run.app/membership
+        address: https://microservice-membership-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-membership-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve a user's membership
       description: Fetches membership data using query params (clubName, ageGroup, division, email)
       operationId: getMembership
@@ -423,7 +456,9 @@ paths:
 
     delete:
       x-google-backend:
-        address: https://microservice-membership-180320540339.europe-west2.run.app/membership
+        address: https://microservice-membership-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-membership-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Delete a user's membership
       description: Deletes a membership using query params (clubName, ageGroup, division, email)
       operationId: deleteMembership
@@ -457,7 +492,9 @@ paths:
   /membership/team:
     get:
       x-google-backend:
-        address: https://microservice-membership-180320540339.europe-west2.run.app/membership/team
+        address: https://microservice-membership-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-membership-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Fetch all players for a team
       description: Fetches all players using query params (clubName, ageGroup, division)
       operationId: listTeamMembers
@@ -505,7 +542,9 @@ paths:
   /club/create-join:
     post:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/create-join
+        address: https://microservice-team-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-team-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Create or join a club
       operationId: createOrJoinClub
       consumes:
@@ -546,7 +585,9 @@ paths:
   /club/search:
     get:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/search
+        address: https://microservice-team-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-team-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Search for clubs
       operationId: searchClubs
       produces:
@@ -581,7 +622,9 @@ paths:
   /club/join-request:
     post:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/join-request
+        address: https://microservice-team-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-team-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Submit a join request
       operationId: submitJoinRequest
       consumes:
@@ -616,7 +659,9 @@ paths:
   /club/requests:
     get:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/requests
+        address: https://microservice-team-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-team-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve pending join requests
       operationId: getJoinRequests
       produces:
@@ -648,7 +693,9 @@ paths:
   /club/requests/approve:
     post:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/requests/approve
+        address: https://microservice-team-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-team-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Approve a player's join request
       operationId: approveJoinRequest
       consumes:
@@ -685,7 +732,9 @@ paths:
   /club/requests/reject:
     post:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/requests/reject
+        address: https://microservice-team-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-team-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Reject a player's join request
       operationId: rejectJoinRequest
       consumes:
@@ -722,7 +771,9 @@ paths:
   /club/players:
     get:
       x-google-backend:
-        address: https://microservice-team-management-180320540339.europe-west2.run.app/club/players
+        address: https://microservice-team-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-team-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve players for a specific club, age group, and division
       operationId: getPlayers
       produces:
@@ -755,7 +806,9 @@ paths:
   /schedule/fixture:
     post:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/fixture
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Add a new fixture to the schedule.
       operationId: addFixture
       consumes:
@@ -791,7 +844,9 @@ paths:
 
     get:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/fixture
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Get fixtures for a month.
       operationId: getFixturesByMonth
       parameters:
@@ -823,7 +878,9 @@ paths:
 
     put:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/fixture
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Update fixture details.
       operationId: updateFixture
       consumes:
@@ -859,7 +916,9 @@ paths:
 
     delete:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/fixture
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Delete a fixture.
       operationId: deleteFixture
       parameters:
@@ -888,7 +947,9 @@ paths:
   /schedule/fixture/{matchId}:
     get:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+
         path_translation: APPEND_PATH_TO_ADDRESS
       summary: Get fixture by match ID.
       operationId: getFixtureById
@@ -920,7 +981,9 @@ paths:
   /schedule/fixtures:
     get:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/fixtures
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Get all fixtures for age group and division.
       operationId: getAllFixtures
       parameters:
@@ -945,7 +1008,9 @@ paths:
   /schedule/training:
     post:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/training
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Add a training session.
       operationId: addTraining
       consumes:
@@ -975,7 +1040,9 @@ paths:
 
     get:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/training
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Get trainings for a month.
       operationId: getTrainingsByMonth
       parameters:
@@ -1007,7 +1074,9 @@ paths:
 
     put:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/training
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Update training details.
       operationId: updateTraining
       consumes:
@@ -1037,7 +1106,9 @@ paths:
 
     delete:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/training
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Delete a training session.
       operationId: deleteTraining
       parameters:
@@ -1066,7 +1137,9 @@ paths:
   /schedule/trainings:
     get:
       x-google-backend:
-        address: https://microservice-schedule-management-180320540339.europe-west2.run.app/schedule/trainings
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Get all trainings.
       operationId: getAllTrainings
       parameters:
@@ -1097,7 +1170,9 @@ paths:
   /fixture/lineups:
     post:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/lineups
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Save initial lineups for a match
       operationId: saveLineups
       consumes:
@@ -1127,7 +1202,9 @@ paths:
           description: Lineups saved successfully.
     get:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/lineups
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve lineups for a match
       operationId: getLineups
       parameters:
@@ -1152,7 +1229,9 @@ paths:
           description: Lineups retrieved successfully.
     patch:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/lineups
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Update existing lineups for a match
       operationId: updateLineups
       consumes:
@@ -1182,7 +1261,9 @@ paths:
           description: Lineups updated successfully.
     delete:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/lineups
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Delete lineups for a match
       operationId: deleteLineups
       parameters:
@@ -1208,7 +1289,9 @@ paths:
   /fixture/events:
     post:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/events
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Add a new event to a match
       operationId: addEvent
       consumes:
@@ -1236,7 +1319,9 @@ paths:
           description: Event added successfully.
     get:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/events
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve all events for a match
       operationId: getEvents
       parameters:
@@ -1261,7 +1346,9 @@ paths:
           description: Events retrieved successfully.
     patch:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/events
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Update an existing match event
       operationId: updateEvent
       consumes:
@@ -1291,7 +1378,9 @@ paths:
           description: Event updated successfully.
     delete:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/events
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Delete a specific event from a match
       operationId: deleteEvent
       parameters:
@@ -1319,7 +1408,9 @@ paths:
   /fixture/results:
     post:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/results
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Save initial match result
       operationId: saveResult
       consumes:
@@ -1349,7 +1440,9 @@ paths:
           description: Result saved successfully.
     get:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/results
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve match result
       operationId: getResult
       parameters:
@@ -1374,7 +1467,9 @@ paths:
           description: Result retrieved successfully.
     patch:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/results
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Update match result
       operationId: updateResult
       consumes:
@@ -1396,7 +1491,9 @@ paths:
           description: Result updated successfully.
     delete:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/results
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Delete match result
       operationId: deleteResult
       consumes:
@@ -1428,7 +1525,9 @@ paths:
   /fixture/player:
     post:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/player
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Submit or overwrite player rating for a match
       description: Submits or overwrites player rating with dynamically accepted fields.
       operationId: submitPlayerRating
@@ -1470,7 +1569,9 @@ paths:
 
     get:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/player
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve a player rating for a match
       description: Fetches a player rating for a specific match.
       operationId: getPlayerRating
@@ -1513,7 +1614,9 @@ paths:
 
     patch:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/player
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Update player rating fields for a match
       description: Allows partial updates to player ratings, dynamically accepting new fields.
       operationId: updatePlayerRating
@@ -1550,7 +1653,9 @@ paths:
 
     delete:
       x-google-backend:
-        address: https://microservice-match-management-180320540339.europe-west2.run.app/fixture/player
+        address: https://microservice-match-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-match-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Delete player rating for a match
       description: Deletes a player’s rating for a specific match.
       operationId: deletePlayerRating
@@ -1584,7 +1689,9 @@ paths:
   /carpool/offer:
     post:
       x-google-backend:
-        address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/offer
+        address: https://microservice-carpool-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-carpool-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Offer a ride for a specific match
       description: Allows a user to offer a carpool ride for a match.
       operationId: offerRide
@@ -1653,7 +1760,9 @@ paths:
   /carpool/rides:
     get:
       x-google-backend:
-        address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/rides
+        address: https://microservice-carpool-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-carpool-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve available rides for a specific team
       description: Retrieves a list of all carpool rides for the given club, age group, and division.
       operationId: getRides
@@ -1729,7 +1838,9 @@ paths:
   /carpool/request:
     post:
       x-google-backend:
-        address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/request
+        address: https://microservice-carpool-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-carpool-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Confirm a carpool ride request
       description: Allows a user to confirm a ride for a specific match. The ride request is automatically confirmed, the available seats are reduced, and the user's name is added to the carpool's passenger list.
       operationId: requestRide
@@ -1791,7 +1902,9 @@ paths:
   /carpool/cancel:
     post:
       x-google-backend:
-        address: https://microservice-carpool-180320540339.europe-west2.run.app/carpool/cancel
+        address: https://microservice-carpool-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-carpool-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Cancel a carpool ride
       description: Allows a driver to cancel a ride they offered.
       operationId: cancelRide
@@ -1824,7 +1937,9 @@ paths:
   /stripe/status:
     get:
       x-google-backend:
-        address: https://microservice-payments-180320540339.europe-west2.run.app/stripe/status
+        address: https://microservice-payments-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-payments-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Check Stripe account status for a club
       description: Checks if a club has a connected Stripe Express account.
       operationId: checkStripeStatus
@@ -1853,7 +1968,9 @@ paths:
   /stripe/connect:
     post:
       x-google-backend:
-        address: https://microservice-payments-180320540339.europe-west2.run.app/stripe/connect
+        address: https://microservice-payments-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-payments-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Onboard a club with Stripe Express
       description: Creates a Stripe Express account for a club and returns an onboarding link.
       operationId: createConnectAccount
@@ -1897,7 +2014,9 @@ paths:
   /products/create:
     post:
       x-google-backend:
-        address: https://microservice-payments-180320540339.europe-west2.run.app/products/create
+        address: https://microservice-payments-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-payments-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Create a new product in a club's Stripe Express account
       description: |
         Creates a new product and price inside the club's own Stripe Express account. 
@@ -1989,7 +2108,9 @@ paths:
   /products/list:
     get:
       x-google-backend:
-        address: https://microservice-payments-180320540339.europe-west2.run.app/products/list
+        address: https://microservice-payments-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-payments-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve available products for a specific team inside a club
       description: Fetches all products listed for sale in a club's Stripe Express account filtered by age group and division.
       operationId: listProducts
@@ -2055,7 +2176,9 @@ paths:
   /stripe/create-checkout-session:
     post:
       x-google-backend:
-        address: https://microservice-payments-180320540339.europe-west2.run.app/stripe/create-checkout-session
+        address: https://microservice-payments-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-payments-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Create a Stripe Checkout session
       description: |
         Creates a Stripe Checkout session for a club's Stripe Express account. 
@@ -2145,7 +2268,9 @@ paths:
   /stripe/webhook:
     post:
       x-google-backend:
-        address: https://microservice-payments-180320540339.europe-west2.run.app/stripe/webhook
+        address: https://microservice-payments-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-payments-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Stripe webhook for processing payments
       description: Handles Stripe webhook events such as successful payments.
       operationId: stripeWebhook
@@ -2170,7 +2295,9 @@ paths:
   /transactions/list:
     get:
       x-google-backend:
-        address: https://microservice-payments-180320540339.europe-west2.run.app/transactions/list
+        address: https://microservice-payments-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-payments-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve a user's transaction history
       description: Fetches a list of completed and pending transactions for a user based on their email. Each transaction includes itemized details of purchased products.
       operationId: listTransactions
@@ -2295,7 +2422,9 @@ paths:
   /stripe/login-link:
     post:
       x-google-backend:
-        address: https://microservice-payments-180320540339.europe-west2.run.app/stripe/login-link
+        address: https://microservice-payments-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-payments-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Generate a Stripe Express Dashboard login link
       description: |
         Creates a one-time login link for a club's Stripe Express account, allowing administrators to access the Express Dashboard.
@@ -2356,7 +2485,9 @@ paths:
   /payments:
     get:
       x-google-backend:
-        address: https://microservice-payments-180320540339.europe-west2.run.app/payments
+        address: https://microservice-payments-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-payments-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve all payments for a specific team
       description: Retrieves a list of all payments for the given club, age group, and division.
       operationId: getPayments
@@ -2432,7 +2563,9 @@ paths:
   /query-ai:
     post:
       x-google-backend:
-        address: https://microservice-ai-chatbot-180320540339.europe-west2.run.app/query-ai
+        address: https://microservice-ai-chatbot-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-ai-chatbot-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Query the AI Assistant
       description: Send a message to the AI Assistant to get data-driven responses from Grassroots Football Management.
       operationId: queryAiAssistant
@@ -2517,7 +2650,9 @@ paths:
   /stats/update:
     post:
       x-google-backend:
-        address: https://microservice-player-stats-180320540339.europe-west2.run.app/stats/update
+        address: https://microservice-player-stats-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-player-stats-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Update player stats based on match events
       description: Updates player stats such as goals, assists, yellow cards, red cards, and games played.
       operationId: updatePlayerStats
@@ -2570,7 +2705,9 @@ paths:
   /stats/get:
     get:
       x-google-backend:
-        address: https://microservice-player-stats-180320540339.europe-west2.run.app/stats/get
+        address: https://microservice-player-stats-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-player-stats-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve player statistics
       description: Fetches player statistics based on their email.
       operationId: getPlayerStats
@@ -2622,7 +2759,9 @@ paths:
   /stats/search:
     get:
       x-google-backend:
-        address: https://microservice-player-stats-180320540339.europe-west2.run.app/stats/search
+        address: https://microservice-player-stats-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-player-stats-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Search players by name
       description: Searches for players based on a partial or full match of their name.
       operationId: searchPlayersByName
@@ -2676,7 +2815,9 @@ paths:
   /stats/list:
     get:
       x-google-backend:
-        address: https://microservice-player-stats-180320540339.europe-west2.run.app/stats/list
+        address: https://microservice-player-stats-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-player-stats-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
       summary: Retrieve all player statistics and leaderboards
       description: Lists all player statistics and identifies top performers for various categories.
       operationId: listAllPlayerStats
