@@ -41,13 +41,34 @@ jobs:
             --region europe-west2 \
             --no-allow-unauthenticated
 
-          gcloud run services add-iam-policy-binding microservice-${{ matrix.service }} \
-            --member=serviceAccount:api-gateway-sa@grassroots-football-management.iam.gserviceaccount.com \
-            --role=roles/run.invoker \
-            --region=europe-west2
+  apply-iam-policy:
+    needs: deploy  # Runs AFTER all services are deployed
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Apply IAM Policy Binding to Services
+        run: |
+          for service in authentication team-management schedule-management match-management carpool payments ai-chatbot membership profile player-stats; do
+            echo "Updating IAM policy for service: microservice-${service}"
+            gcloud run services add-iam-policy-binding microservice-${service} \
+              --member=serviceAccount:api-gateway-sa@grassroots-football-management.iam.gserviceaccount.com \
+              --role=roles/run.invoker \
+              --region=europe-west2
+            sleep 5
+          done
 
   update-api-gateway:
-    needs: deploy  # This job will run after the microservices are deployed
+    needs: 
+      - deploy
+      - apply-iam-policy  # Runs AFTER IAM policies are applied
     runs-on: ubuntu-latest
 
     steps:
@@ -64,19 +85,15 @@ jobs:
 
       - name: Deploy updated API config to API Gateway
         run: |
-          # Navigate to the correct directory for the OpenAPI spec
           cd backend/api
 
-          # Increment the API config version dynamically (e.g., v2-config)
           API_VERSION=$(date +'%Y%m%d-%H%M%S')
           
-          # Create the new API config
           gcloud api-gateway api-configs create "v${API_VERSION}" \
             --api=gfm \
             --openapi-spec=openapi.yaml \
             --project=grassroots-football-management
 
-          # Update the API Gateway to use the new configuration
           gcloud api-gateway gateways update grassroots-gateway \
             --api=gfm \
             --api-config="v${API_VERSION}" \
