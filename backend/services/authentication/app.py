@@ -159,6 +159,35 @@ def create_user():
         return jsonify({"error": "Internal server error"}), 500
 
 
+# Create User - POST /user/pre-register
+@app.route("/user/pre-register", methods=["POST"])
+def create_user_pre():
+    try:
+        data = request.json
+        email = data["email"].strip().lower()
+        role = data["role"]
+
+        user_data = {
+            "email": email,
+            "uid": data.get("uid", ""),
+            "role": role,
+        }
+
+        users_ref.document(email).set(user_data)
+
+        return jsonify({"message": "User created successfully"}), 201
+
+    except KeyError as e:
+        logging.error("Key error: %s", str(e))
+        return jsonify({"error": f"Missing key: {str(e)}"}), 400
+    except ValueError as e:
+        logging.error("Value error: %s", str(e))
+        return jsonify({"error": f"Value error: {str(e)}"}), 400
+    except Exception as e:
+        logging.error("Unexpected error: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+
 # Login - POST /auth/login
 @app.route("/auth/login", methods=["POST"])
 def login():

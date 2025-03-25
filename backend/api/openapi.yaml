@@ -203,6 +203,41 @@ paths:
         '500':
           description: Internal server error
 
+
+  /user/pre-register:
+    post:
+      x-google-backend:
+        address: https://microservice-authentication-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-authentication-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Create a new user document
+      description: Creates a new user document in the Firestore database
+      operationId: createUserPre
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: User data for the new user
+          required: true
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+              uid:
+                type: string
+      responses:
+        '201':
+          description: User created successfully
+        '400':
+          description: Invalid input
+        '500':
+          description: Internal server error
+
+
   # Profile Microservice Routes
   /profile:
     post:
