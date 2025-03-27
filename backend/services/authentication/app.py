@@ -232,6 +232,8 @@ def get_user(email):
         return jsonify({
             "uid": user_data.get("uid"),
             "email": user_data.get("email"),
+            "fcmToken": user_data.get("fcmToken"),
+            "role": user_data.get("role"),
         }), 200
 
     except auth.UserNotFoundError:
@@ -245,14 +247,13 @@ def update_user(email):
         email = email.strip().lower()
         update_data = request.json
 
-        if "uid" not in update_data:
-            return jsonify({"error": "UID is required"}), 400
+        if not update_data:
+            return jsonify({"error": "No data provided for update"}), 400
 
-        users_ref.document(email).update({
-            "uid": update_data["uid"],
-        })
+        # Update the user document with all fields in update_data
+        users_ref.document(email).update(update_data)
 
-        return jsonify({"message": "User UID updated successfully"}), 200
+        return jsonify({"message": "User updated successfully"}), 200
 
     except Exception as e:
         logging.error("Error updating user: %s", str(e))

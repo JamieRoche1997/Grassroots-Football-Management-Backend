@@ -3,7 +3,7 @@ import logging
 import os
 import uuid
 from flask import Flask, request, jsonify
-from firebase_admin import credentials, initialize_app, firestore
+from firebase_admin import credentials, initialize_app, firestore, messaging
 from google.cloud import firestore as fs, secretmanager
 from flask_cors import CORS
 
@@ -62,21 +62,71 @@ db = firestore.client()
 def add_fixture():
     try:
         data = request.json
+        club_name = data['clubName']
+        age_group = data['ageGroup']
+        division = data['division']
+        match_id = str(uuid.uuid4())
+        home_team = data['homeTeam']
+        away_team = data['awayTeam']
+        date = data['date']
+        created_by = data['createdBy']
+
+        formatted_date, formatted_time = date.split('T')
+
         fixture = {
-            "matchId": str(uuid.uuid4()),
-            "homeTeam": data['homeTeam'],
-            "awayTeam": data['awayTeam'],
-            "date": data['date'],
-            "createdBy": data['createdBy']
+            "matchId": match_id,
+            "homeTeam": home_team,
+            "awayTeam": away_team,
+            "date": date,
+            "createdBy": created_by
         }
-        (db.collection('clubs').document(data['clubName'])
-         .collection('ageGroups').document(data['ageGroup'])
-         .collection('divisions').document(data['division'])
-         .collection('fixtures').document(fixture['matchId']).set(fixture))
-        return jsonify({"message": "Fixture added successfully"}), 201
+        (db.collection('clubs').document(club_name)
+         .collection('ageGroups').document(age_group)
+         .collection('divisions').document(division)
+         .collection('fixtures').document(match_id).set(fixture))
+        
+        tokens_ref = (db.collection('clubs').document(club_name)
+                      .collection('ageGroups').document(age_group)
+                      .collection('divisions').document(division)
+                      .collection('notifications'))
+
+        notifications_ref = (db.collection('clubs').document(club_name)
+                     .collection('ageGroups').document(age_group)
+                     .collection('divisions').document(division)
+                     .collection('notifications'))
+
+        for doc in tokens_ref.stream():
+            token_data = doc.to_dict()
+            email = doc.id  # use document ID as the email identifier
+            fcm_token = token_data.get("fcm_token")
+
+            if not fcm_token:
+                continue
+
+            # Send FCM notification
+            message = messaging.Message(
+                token=fcm_token,
+                notification=messaging.Notification(
+                    title="📅 New Fixture Scheduled",
+                    body=f"Date: {formatted_date}\nTime: {formatted_time}\n{home_team} vs {away_team}",
+                ),
+            )
+            messaging.send(message)
+
+            # Save to Firestore
+            notifications_ref.document(email).collection("messages").add({
+                "type": "training",
+                "title": "📅 New Fixture Scheduled",
+                "body": f"Date: {formatted_date}, Time: {formatted_time}, {home_team} vs {away_team}",
+                "timestamp": fs.SERVER_TIMESTAMP,
+                "read": False,
+                "relatedId": match_id
+            })
+
+        return jsonify({"message": "Training session added and notifications sent"}), 201
 
     except Exception as e:
-        logging.error("Error adding fixture: %s", e)
+        logging.error("Error adding training session: %s", e)
         return jsonify({"error": "Internal server error"}), 500
 
 
@@ -199,6 +249,50 @@ def get_fixtures():
     except Exception as e:
         logging.error("Error fetching fixtures: %s", e)
         return jsonify({"error": "Internal server error"}), 500
+    
+
+@app.route('/schedule/fixture/availability', methods=['POST'])
+def update_availability():
+    data = request.get_json()
+    club_name = data["clubName"]
+    age_group = data["ageGroup"]
+    division = data["division"]
+    email = data["email"]
+    available = data["available"]
+    match_id = data["matchId"]
+
+    doc_ref = (db.collection("clubs").document(club_name)
+               .collection("ageGroups").document(age_group)
+               .collection("divisions").document(division)
+               .collection("fixtures").document(match_id)
+               .collection("availability").document(email))
+
+    doc_ref.set({
+        "available": available,
+        "timestamp": fs.SERVER_TIMESTAMP
+    })
+
+    return jsonify({"message": "Availability updated"}), 200
+
+
+@app.route('/schedule/fixture/availability', methods=['GET'])
+def get_availability():
+    club_name = request.args.get("clubName")
+    age_group = request.args.get("ageGroup")
+    division = request.args.get("division")
+    match_id = request.args.get("matchId")
+
+    availability_ref = (db.collection("clubs").document(club_name)
+                        .collection("ageGroups").document(age_group)
+                        .collection("divisions").document(division)
+                        .collection("fixtures").document(match_id)
+                        .collection("availability"))
+
+    docs = availability_ref.stream()
+    availability = [{**doc.to_dict(), "email": doc.id} for doc in docs]
+
+    return jsonify({"availability": availability}), 200
+
 
 
 ### CREATE TRAINING ###
@@ -207,22 +301,73 @@ def get_fixtures():
 def add_training():
     try:
         data = request.json
+        club_name = data['clubName']
+        age_group = data['ageGroup']
+        division = data['division']
+        training_id = str(uuid.uuid4())
+        date = data['date']
+        location = data['location']
+        notes = data.get('notes', '')
+        created_by = data['createdBy']
+
+        formatted_date, formatted_time = date.split('T')
+        
         training = {
-            "trainingId": str(uuid.uuid4()),
-            "date": data['date'],
-            "location": data['location'],
-            "notes": data.get('notes', ''),
-            "createdBy": data['createdBy']
+            "trainingId": training_id,
+            "date": date,
+            "location": location,
+            "notes": notes,
+            "createdBy": created_by
         }
-        (db.collection('clubs').document(data['clubName'])
-         .collection('ageGroups').document(data['ageGroup'])
-         .collection('divisions').document(data['division'])
-         .collection('trainings').document(training['trainingId']).set(training))
-        return jsonify({"message": "Training session added successfully"}), 201
+        (db.collection('clubs').document(club_name)
+         .collection('ageGroups').document(age_group)
+         .collection('divisions').document(division)
+         .collection('trainings').document(training_id).set(training))
+        
+        tokens_ref = (db.collection('clubs').document(club_name)
+                      .collection('ageGroups').document(age_group)
+                      .collection('divisions').document(division)
+                      .collection('notifications'))
+
+        notifications_ref = (db.collection('clubs').document(club_name)
+                     .collection('ageGroups').document(age_group)
+                     .collection('divisions').document(division)
+                     .collection('notifications'))
+
+        for doc in tokens_ref.stream():
+            token_data = doc.to_dict()
+            email = doc.id  # use document ID as the email identifier
+            fcm_token = token_data.get("fcm_token")
+
+            if not fcm_token:
+                continue
+
+            # Send FCM notification
+            message = messaging.Message(
+                token=fcm_token,
+                notification=messaging.Notification(
+                    title="📅 New Training Scheduled",
+                    body=f"Date: {formatted_date}\nTime: {formatted_time}\nLocation: {location}",
+                ),
+            )
+            messaging.send(message)
+
+            # Save to Firestore
+            notifications_ref.document(email).collection("messages").add({
+                "type": "training",
+                "title": "📅 New Training Scheduled",
+                "body": f"Date: {formatted_date}, Time: {formatted_time}, Location: {location}",
+                "timestamp": fs.SERVER_TIMESTAMP,
+                "read": False,
+                "relatedId": training_id
+            })
+
+        return jsonify({"message": "Training session added and notifications sent"}), 201
 
     except Exception as e:
         logging.error("Error adding training session: %s", e)
         return jsonify({"error": "Internal server error"}), 500
+
 
 ### UPDATE TRAINING ###
 # UPDATE TRAINING
@@ -342,6 +487,50 @@ def get_trainings():
     except Exception as e:
         logging.error("Error fetching trainings: %s", e)
         return jsonify({"error": "Internal server error"}), 500
+    
+
+@app.route('/schedule/training/availability', methods=['POST'])
+def update_training_availability():
+    data = request.get_json()
+    club_name = data["clubName"]
+    age_group = data["ageGroup"]
+    division = data["division"]
+    email = data["email"]
+    available = data["available"]
+    training_id = data["trainingId"]
+
+    doc_ref = (db.collection("clubs").document(club_name)
+               .collection("ageGroups").document(age_group)
+               .collection("divisions").document(division)
+               .collection("trainings").document(training_id)
+               .collection("availability").document(email))
+
+    doc_ref.set({
+        "available": available,
+        "timestamp": fs.SERVER_TIMESTAMP
+    })
+
+    return jsonify({"message": "Availability updated"}), 200
+
+
+@app.route('/schedule/training/availability', methods=['GET'])
+def get_training_availability():
+    club_name = request.args.get("clubName")
+    age_group = request.args.get("ageGroup")
+    division = request.args.get("division")
+    training_id = request.args.get("trainingId")
+
+    availability_ref = (db.collection("clubs").document(club_name)
+                        .collection("ageGroups").document(age_group)
+                        .collection("divisions").document(division)
+                        .collection("trainings").document(training_id)
+                        .collection("availability"))
+
+    docs = availability_ref.stream()
+    availability = [{**doc.to_dict(), "email": doc.id} for doc in docs]
+
+    return jsonify({"availability": availability}), 200
+
 
 
 if __name__ == "__main__":

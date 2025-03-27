@@ -119,8 +119,8 @@ paths:
         address: https://microservice-authentication-180320540339.europe-west2.run.app
         jwtAudience: https://microservice-authentication-180320540339.europe-west2.run.app
         path_translation: APPEND_PATH_TO_ADDRESS
-      summary: Update user identity
-      description: Updates the UID for a given user in Firestore
+      summary: Update user fields
+      description: Updates one or more fields for a given user in Firestore
       operationId: updateUserByEmail
       consumes:
         - application/json
@@ -140,11 +140,11 @@ paths:
               uid:
                 type: string
       responses:
-        '200':
+        "200":
           description: User updated successfully
-        '400':
+        "400":
           description: Invalid request
-        '500':
+        "500":
           description: Internal server error
 
     delete:
@@ -288,8 +288,8 @@ paths:
     get:
       x-google-backend:
         address: https://microservice-profile-180320540339.europe-west2.run.app
-        jwtAudience: https://microservice-profile-180320540339.europe-west2.run.app
         path_translation: APPEND_PATH_TO_ADDRESS
+      security: []
       summary: Retrieve a user profile
       description: Fetches a profile from the Profile Service using email
       operationId: getProfile
@@ -1199,6 +1199,166 @@ paths:
               type: object
         '500':
           description: Internal server error.
+
+  /schedule/training/availability:
+    post:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Update training availability
+      description: Updates the availability status of a user for a specific training session
+      operationId: updateTrainingAvailability
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+              - clubName
+              - ageGroup
+              - division
+              - available
+              - trainingId
+            properties:
+              email:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              available:
+                type: boolean
+              trainingId:
+                type: string
+      responses:
+        '200':
+          description: Availability updated
+        '500':
+          description: Internal server error
+
+    get:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Get training availability
+      description: Fetches availability of all players for a specific training session
+      operationId: getTrainingAvailability
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+        - in: query
+          name: trainingId
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of availability responses
+        '400':
+          description: Missing or invalid parameters
+        '500':
+          description: Internal server error
+
+
+  /schedule/fixture/availability:
+    post:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Update or fetch fixture availability
+      description: Updates or fetches availability of players for a specific fixture.
+      operationId: fixtureAvailability
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - clubName
+              - ageGroup
+              - division
+              - matchId
+            properties:
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              email:
+                type: string
+              available:
+                type: boolean
+              matchId:
+                type: string
+      responses:
+        '200':
+          description: Success
+        '500':
+          description: Internal server error
+
+    get:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Get fixture availability
+      description: Fetches availability of all players for a specific fixture
+      operationId: getFixtureAvailability
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+        - in: query
+          name: matchId
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of availability responses
+        '400':
+          description: Missing or invalid parameters
+        '500':
+          description: Internal server error
+
 
 
   # Match Ratings Microservice Routes
@@ -2929,3 +3089,179 @@ paths:
           description: Missing or invalid query parameters
         '500':
           description: Internal server error
+
+  # Notification Microservice Routes
+  /add-fcm-token:
+    post:
+      x-google-backend:
+        address: https://microservice-notification-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-notification-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Add FCM token to club-specific notifications collection
+      description: Adds a user's FCM token to the Firestore path for their club, age group, and division.
+      operationId: addFcmToken
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Player event details for updating stats
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+              - clubName
+              - ageGroup
+              - division
+              - fcmToken
+            properties:
+              email:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              fcmToken:
+                type: string
+      responses:
+        '200':
+          description: FCM token added successfully
+        '400':
+          description: Invalid input
+        '500':
+          description: Internal server error
+  
+  /notifications/unread:
+    post:
+      x-google-backend:
+        address: https://microservice-notification-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-notification-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Get unread notifications
+      description: Retrieves all unread notifications for a player in a specific club, age group, and division.
+      operationId: getUnreadNotifications
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: User and team identifiers for retrieving notifications
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+              - clubName
+              - ageGroup
+              - division
+            properties:
+              email:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+      responses:
+        '200':
+          description: List of unread notifications
+        '400':
+          description: Invalid input
+        '500':
+          description: Failed to fetch notifications
+
+  /notifications/mark-read:
+    post:
+      x-google-backend:
+        address: https://microservice-notification-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-notification-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Mark notification as read
+      description: Marks a specific notification as read in the database for a given player.
+      operationId: markNotificationAsRead
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Notification and user details to update
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+              - clubName
+              - ageGroup
+              - division
+              - notificationId
+            properties:
+              email:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              notificationId:
+                type: string
+      responses:
+        '200':
+          description: Notification marked as read
+        '400':
+          description: Invalid input
+        '500':
+          description: Failed to update notification
+
+  /notifications/all:
+    post:
+      x-google-backend:
+        address: https://microservice-notification-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-notification-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Get all notifications (read and unread)
+      description: Returns all notifications for a player, including read and unread, sorted by timestamp.
+      operationId: getAllNotifications
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          description: Player and club context
+          schema:
+            type: object
+            required:
+              - email
+              - clubName
+              - ageGroup
+              - division
+            properties:
+              email:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+      responses:
+        '200':
+          description: All notifications fetched successfully
+        '400':
+          description: Invalid input
+        '500':
+          description: Failed to fetch notifications
+  

@@ -1,0 +1,5 @@
+firebase-admin
+flask
+gunicorn
+flask-cors
+google-cloud-secret-manager
