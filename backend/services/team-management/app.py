@@ -305,15 +305,15 @@ def reject_join_request():
 
         # Update join request status to rejected
         join_requests_ref = (
-            (db.collection("clubs")
+            db.collection("clubs")
             .document(club_name)
             .collection("ageGroups")
             .document(age_group)
             .collection("divisions")
             .document(division)
-             .collection("joinRequests")
+            .collection("joinRequests")
             .where("playerEmail", "==", player_email)
-            .where("clubName", "==", club_name))
+            .where("clubName", "==", club_name)
         )
         for req in join_requests_ref.stream():
             req.reference.update({"status": "rejected"})
@@ -342,13 +342,15 @@ def get_players():
             )
 
         # Query users collection for players matching the criteria
-        membership_ref = (db.collection("clubs")
-                          .document(club_name)
-                          .collection("ageGroups")
-                          .document(age_group)
-                          .collection("divisions")
-                          .document(division)
-                          .collection("memberships"))
+        membership_ref = (
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
+            .collection("memberships")
+        )
         players_query = (
             membership_ref.where("role", "==", "player")
             .where("clubName", "==", club_name)

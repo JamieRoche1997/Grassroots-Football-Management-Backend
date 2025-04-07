@@ -10,7 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: ['authentication', 'team-management', 'schedule-management', 'match-management', 'carpool', 'payments', 'ai-chatbot', 'membership', 'profile', 'player-stats', 'notification']
+        service:
+          [
+            "authentication",
+            "team-management",
+            "schedule-management",
+            "match-management",
+            "carpool",
+            "payments",
+            "ai-chatbot",
+            "membership",
+            "profile",
+            "player-stats",
+            "notification",
+          ]
       max-parallel: 4
 
     steps:
@@ -39,10 +52,10 @@ jobs:
             --image gcr.io/grassroots-football-management/microservice-${{ matrix.service }} \
             --platform managed \
             --region europe-west2 \
-            --no-allow-unauthenticated        
+            --no-allow-unauthenticated
 
   update-api-gateway:
-    needs: 
+    needs:
       - deploy
     runs-on: ubuntu-latest
 
@@ -63,7 +76,7 @@ jobs:
           cd backend/api
 
           API_VERSION=$(date +'%Y%m%d-%H%M%S')
-          
+
           gcloud api-gateway api-configs create "v${API_VERSION}" \
             --api=gfm \
             --openapi-spec=openapi.yaml \
@@ -74,18 +87,18 @@ jobs:
             --api-config="v${API_VERSION}" \
             --location=europe-west2 \
             --project=grassroots-football-management
-  
+
   apply-iam-policy:
-    needs: 
+    needs:
       - deploy
       - update-api-gateway
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code  # ✅ Ensure workspace is not empty
+      - name: Checkout code # ✅ Ensure workspace is not empty
         uses: actions/checkout@v3
 
-      - name: Authenticate with Google Cloud  # ✅ Authenticate AFTER checkout
+      - name: Authenticate with Google Cloud # ✅ Authenticate AFTER checkout
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -100,4 +113,4 @@ jobs:
               --member=serviceAccount:api-gateway-sa@grassroots-football-management.iam.gserviceaccount.com \
               --role=roles/run.invoker \
               --region=europe-west2
-                    done  
+                    done

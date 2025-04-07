@@ -13,6 +13,7 @@ CORS(app)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 def load_service_account_secret():
     try:
         client = secretmanager.SecretManagerServiceClient()
@@ -20,12 +21,15 @@ def load_service_account_secret():
         secret_name = "firebase-service-account"
         secret_version = "latest"
 
-        secret_path = f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
+        secret_path = (
+            f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
+        )
         response = client.access_secret_version(request={"name": secret_path})
         return json.loads(response.payload.data.decode("UTF-8"))
     except Exception as e:
         logger.error("Error loading secret: %s", str(e))
         raise
+
 
 # Initialise Firebase
 try:
@@ -38,19 +42,32 @@ except Exception as e:
     logger.error("Failed to initialise Firebase Admin: %s", str(e))
     raise
 
+
 # Helper to get membership doc ref
 def get_membership_ref(club_name, age_group, division, email):
-    return (db.collection('clubs').document(club_name)
-            .collection('ageGroups').document(age_group)
-            .collection('divisions').document(division)
-            .collection('memberships').document(email))
+    return (
+        db.collection("clubs")
+        .document(club_name)
+        .collection("ageGroups")
+        .document(age_group)
+        .collection("divisions")
+        .document(division)
+        .collection("memberships")
+        .document(email)
+    )
+
 
 # Create Membership
 @app.route("/membership", methods=["POST"])
 def create_membership():
     try:
         data = request.json
-        club_name, age_group, division, email = data["clubName"], data["ageGroup"], data["division"], data["email"].strip().lower()
+        club_name, age_group, division, email = (
+            data["clubName"],
+            data["ageGroup"],
+            data["division"],
+            data["email"].strip().lower(),
+        )
 
         membership_data = {
             "email": email,
@@ -61,7 +78,7 @@ def create_membership():
             "position": data.get("position", ""),
             "userRegistered": data.get("userRegistered", False),
             "joinedAt": fs.SERVER_TIMESTAMP,
-            "updatedAt": fs.SERVER_TIMESTAMP
+            "updatedAt": fs.SERVER_TIMESTAMP,
         }
 
         get_membership_ref(club_name, age_group, division, email).set(membership_data)
@@ -72,14 +89,24 @@ def create_membership():
         logger.error(f"Error creating membership: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
+
 # Update Membership
 @app.route("/membership", methods=["PATCH"])
 def update_membership():
     try:
         data = request.json
-        club_name, age_group, division, email = data["clubName"], data["ageGroup"], data["division"], data["email"].strip().lower()
+        club_name, age_group, division, email = (
+            data["clubName"],
+            data["ageGroup"],
+            data["division"],
+            data["email"].strip().lower(),
+        )
 
-        update_data = {key: value for key, value in data.items() if key not in ["clubName", "ageGroup", "division", "email"]}
+        update_data = {
+            key: value
+            for key, value in data.items()
+            if key not in ["clubName", "ageGroup", "division", "email"]
+        }
         update_data["updatedAt"] = fs.SERVER_TIMESTAMP
 
         get_membership_ref(club_name, age_group, division, email).update(update_data)
@@ -89,6 +116,7 @@ def update_membership():
     except Exception as e:
         logger.error(f"Error updating membership: {e}")
         return jsonify({"error": "Internal server error"}), 500
+
 
 # Get Membership (Single Player)
 @app.route("/membership", methods=["GET"])
@@ -110,6 +138,7 @@ def get_membership():
         logger.error(f"Error fetching membership: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
+
 # List All Players for a Team
 @app.route("/membership/team", methods=["GET"])
 def list_team_members():
@@ -119,14 +148,19 @@ def list_team_members():
         division = request.args.get("division")
 
         players = []
-        memberships = (db.collection('clubs').document(club_name)
-                       .collection('ageGroups').document(age_group)
-                       .collection('divisions').document(division)
-                       .collection('memberships'))
+        memberships = (
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
+            .collection("memberships")
+        )
 
         for doc in memberships.stream():
             member = doc.to_dict()
-            if member.get('role') == 'player':  # Only include players
+            if member.get("role") == "player":  # Only include players
                 players.append(member)
 
         return jsonify(players), 200
@@ -134,6 +168,7 @@ def list_team_members():
     except Exception as e:
         logger.error(f"Error listing team members: {e}")
         return jsonify({"error": "Internal server error"}), 500
+
 
 # Delete Membership
 @app.route("/membership", methods=["DELETE"])
@@ -151,6 +186,7 @@ def delete_membership():
     except Exception as e:
         logger.error(f"Error deleting membership: {e}")
         return jsonify({"error": "Internal server error"}), 500
+
 
 # Start Flask app
 if __name__ == "__main__":

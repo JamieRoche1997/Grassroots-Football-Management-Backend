@@ -14,6 +14,7 @@ CORS(app)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 def load_service_account_secret():
     """
     Load the Firebase service account credentials from Google Secret Manager.
@@ -25,7 +26,9 @@ def load_service_account_secret():
         secret_name = "firebase-service-account"
         secret_version = "latest"
 
-        secret_path = f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
+        secret_path = (
+            f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
+        )
         response = client.access_secret_version(request={"name": secret_path})
         service_account_data = response.payload.data.decode("UTF-8")
 
@@ -33,6 +36,7 @@ def load_service_account_secret():
     except Exception as e:
         logger.error("Error loading service account secret: %s", str(e))
         raise RuntimeError(f"Failed to load service account secret: {str(e)}") from e
+
 
 # Initialise Firebase Admin with secret-loaded credentials
 try:
@@ -49,6 +53,7 @@ db = firestore.client()
 
 # Collection reference
 profiles_ref = db.collection("profile")
+
 
 # Create Profile - POST /profile
 @app.route("/profile", methods=["POST"])
@@ -67,7 +72,7 @@ def create_profile():
             "ageGroup": data.get("ageGroup", ""),
             "division": data.get("division", ""),
             "createdAt": fs.SERVER_TIMESTAMP,
-            "lastLogin": fs.SERVER_TIMESTAMP
+            "lastLogin": fs.SERVER_TIMESTAMP,
         }
 
         profiles_ref.document(email).set(profile_data)
@@ -77,6 +82,7 @@ def create_profile():
     except Exception as e:
         logger.error("Error creating profile for %s: %s", email, str(e))
         return jsonify({"error": "Internal server error"}), 500
+
 
 # Get Profile - GET /profile/{email}
 @app.route("/profile/<email>", methods=["GET"])
@@ -93,6 +99,7 @@ def get_profile(email):
     except Exception as e:
         logger.error("Error retrieving profile for %s: %s", email, str(e))
         return jsonify({"error": "Internal server error"}), 500
+
 
 # Update Profile - PATCH /profile/{email}
 @app.route("/profile/<email>", methods=["PATCH"])
@@ -114,6 +121,7 @@ def update_profile(email):
         logger.error("Error updating profile for %s: %s", email, str(e))
         return jsonify({"error": "Internal server error"}), 500
 
+
 # Delete Profile - DELETE /profile/{email}
 @app.route("/profile/<email>", methods=["DELETE"])
 def delete_profile(email):
@@ -127,6 +135,7 @@ def delete_profile(email):
     except Exception as e:
         logger.error("Error deleting profile for %s: %s", email, str(e))
         return jsonify({"error": "Internal server error"}), 500
+
 
 # Run the Flask app
 if __name__ == "__main__":

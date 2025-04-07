@@ -48,12 +48,19 @@ except Exception as e:
 # Initialise Firestore
 db = firestore.client()
 
+
 ### Helpers ###
 def notifications_ref(club_name, age_group, division, email):
-    return (db.collection("clubs").document(club_name)
-            .collection("ageGroups").document(age_group)
-            .collection("divisions").document(division)
-            .collection("notifications").document(email))
+    return (
+        db.collection("clubs")
+        .document(club_name)
+        .collection("ageGroups")
+        .document(age_group)
+        .collection("divisions")
+        .document(division)
+        .collection("notifications")
+        .document(email)
+    )
 
 
 # Add FCM Token to Club Collection
@@ -74,9 +81,9 @@ def add_fcm_token():
     except Exception as e:
         logger.error("Failed to add FCM token: %s", str(e))
         return jsonify({"error": "Failed to add FCM token"}), 500
-    
 
-@app.route('/notifications/unread', methods=['POST'])
+
+@app.route("/notifications/unread", methods=["POST"])
 def get_unread_notifications():
     try:
         data = request.get_json()
@@ -85,10 +92,12 @@ def get_unread_notifications():
         division = data["division"]
         email = data["email"]
 
-        ref = (notifications_ref(club_name, age_group, division, email)
-               .collection("messages")
-               .where("read", "==", False)
-               .order_by("timestamp", direction=fs.Query.DESCENDING))
+        ref = (
+            notifications_ref(club_name, age_group, division, email)
+            .collection("messages")
+            .where("read", "==", False)
+            .order_by("timestamp", direction=fs.Query.DESCENDING)
+        )
 
         docs = ref.stream()
         notifications = [{**doc.to_dict(), "id": doc.id} for doc in docs]
@@ -99,7 +108,7 @@ def get_unread_notifications():
         return jsonify({"error": "Failed to fetch notifications"}), 500
 
 
-@app.route('/notifications/mark-read', methods=['POST'])
+@app.route("/notifications/mark-read", methods=["POST"])
 def mark_notification_as_read():
     try:
         data = request.get_json()
@@ -109,8 +118,11 @@ def mark_notification_as_read():
         email = data["email"]
         notification_id = data["notificationId"]
 
-        ref = (notifications_ref(club_name, age_group, division, email)
-               .collection("messages").document(notification_id))
+        ref = (
+            notifications_ref(club_name, age_group, division, email)
+            .collection("messages")
+            .document(notification_id)
+        )
 
         ref.update({"read": True})
 
@@ -118,9 +130,9 @@ def mark_notification_as_read():
     except Exception as e:
         logger.error("Failed to mark notification as read: %s", str(e))
         return jsonify({"error": "Failed to update notification"}), 500
-    
 
-@app.route('/notifications/all', methods=['POST'])
+
+@app.route("/notifications/all", methods=["POST"])
 def get_all_notifications():
     try:
         data = request.get_json()
@@ -129,9 +141,11 @@ def get_all_notifications():
         division = data["division"]
         email = data["email"]
 
-        ref = (notifications_ref(club_name, age_group, division, email)
-               .collection("messages")
-               .order_by("timestamp", direction=fs.Query.DESCENDING))
+        ref = (
+            notifications_ref(club_name, age_group, division, email)
+            .collection("messages")
+            .order_by("timestamp", direction=fs.Query.DESCENDING)
+        )
 
         docs = ref.stream()
         notifications = [{**doc.to_dict(), "id": doc.id} for doc in docs]
@@ -140,7 +154,6 @@ def get_all_notifications():
     except Exception as e:
         logger.error("Failed to fetch all notifications: %s", str(e))
         return jsonify({"error": "Failed to fetch notifications"}), 500
-
 
 
 # Run the Flask app

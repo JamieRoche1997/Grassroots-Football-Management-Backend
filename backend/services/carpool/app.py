@@ -24,7 +24,9 @@ def load_service_account_secret():
         secret_version = "latest"
 
         # Build the resource name of the secret version
-        secret_path = f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
+        secret_path = (
+            f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
+        )
         response = client.access_secret_version(request={"name": secret_path})
         service_account_info = response.payload.data.decode("UTF-8")
 
@@ -62,11 +64,16 @@ def offer_ride():
         if "matchId" not in data or not data["matchId"]:
             return jsonify({"error": "matchId is required"}), 400
 
-        ride_ref = (db.collection("clubs").document(club_name)
-                .collection("ageGroups").document(age_group)
-                .collection("divisions").document(division)
-                .collection("carpools").document())
-
+        ride_ref = (
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
+            .collection("carpools")
+            .document()
+        )
 
         ride_data = {
             "id": ride_ref.id,
@@ -81,7 +88,10 @@ def offer_ride():
         }
 
         ride_ref.set(ride_data)
-        return jsonify({"message": "Ride added successfully", "ride_id": ride_ref.id}), 201
+        return (
+            jsonify({"message": "Ride added successfully", "ride_id": ride_ref.id}),
+            201,
+        )
 
     except Exception as e:
         logger.error("Error offering ride: %s", str(e))
@@ -99,10 +109,16 @@ def get_rides():
         if not all([club_name, age_group, division]):
             return jsonify({"error": "Missing required query parameters"}), 400
 
-        rides = (db.collection("clubs").document(club_name)
-                .collection("ageGroups").document(age_group)
-                .collection("divisions").document(division)
-                .collection("carpools").stream())
+        rides = (
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
+            .collection("carpools")
+            .stream()
+        )
 
         ride_list = [{**ride.to_dict(), "id": ride.id} for ride in rides]
 
@@ -127,10 +143,16 @@ def request_ride():
         if not user_name or not ride_id:
             return jsonify({"error": "userName and ride_id are required"}), 400
 
-        ride_ref = (db.collection("clubs").document(club_name)
-                .collection("ageGroups").document(age_group)
-                .collection("divisions").document(division)
-                .collection("carpools").document(ride_id))
+        ride_ref = (
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
+            .collection("carpools")
+            .document(ride_id)
+        )
         ride = ride_ref.get()
 
         if not ride.exists:
@@ -143,12 +165,16 @@ def request_ride():
             return jsonify({"error": "No available seats"}), 400
 
         # Update ride document: Reduce seats & add user to `passengers`
-        ride_ref.update({
-            "seats": ride_data["seats"] - 1,
-            "passengers": fs.ArrayUnion([user_name])
-        })
+        ride_ref.update(
+            {"seats": ride_data["seats"] - 1, "passengers": fs.ArrayUnion([user_name])}
+        )
 
-        return jsonify({"message": "Ride confirmed", "ride_id": ride_id, "user": user_name}), 200
+        return (
+            jsonify(
+                {"message": "Ride confirmed", "ride_id": ride_id, "user": user_name}
+            ),
+            200,
+        )
 
     except Exception as e:
         logger.error("Error confirming ride request: %s", str(e))
@@ -168,12 +194,20 @@ def cancel_ride():
         if not ride_id:
             return jsonify({"error": "Missing rideId in request body"}), 400
 
-        logger.info("Received request to cancel ride: %s", ride_id)  # ✅ Log received ride ID
+        logger.info(
+            "Received request to cancel ride: %s", ride_id
+        )  # ✅ Log received ride ID
 
-        ride_ref = (db.collection("clubs").document(club_name)
-                .collection("ageGroups").document(age_group)
-                .collection("divisions").document(division)
-                .collection("carpools").document(ride_id))
+        ride_ref = (
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
+            .collection("carpools")
+            .document(ride_id)
+        )
         ride = ride_ref.get()
 
         if not ride.exists:

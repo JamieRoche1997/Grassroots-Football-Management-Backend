@@ -183,7 +183,7 @@ def create_product():
                 .collection("products")
                 .document(product_name)
             )
-            
+
             existing_product = existing_product_ref.get()
 
             if existing_product.exists:
@@ -503,7 +503,6 @@ def handle_subscription(session):
                 subscription_schedule = stripe.SubscriptionSchedule.create(
                     from_subscription=subscription_id,
                     stripe_account=stripe_account_id,
-
                 )
 
                 subscription_schedule_id = subscription_schedule["id"]
@@ -529,7 +528,6 @@ def handle_subscription(session):
                         },
                     ],
                     stripe_account=stripe_account_id,
-
                 )
 
     except stripe.error.StripeError as e:
@@ -634,18 +632,34 @@ def handle_successful_payment(session):
 
         # ✅ Update membership status only if a membership was bought
         if membership_purchased:
-            (db.collection("clubs").document(club_name)
-            .collection("ageGroups").document(age_group)
-            .collection("divisions").document(division)
-            .collection("memberships").document(customer_email).update(
-                {"membershipPaid": True, "lastPaymentDate": firestore.SERVER_TIMESTAMP}
-            ))
+            (
+                db.collection("clubs")
+                .document(club_name)
+                .collection("ageGroups")
+                .document(age_group)
+                .collection("divisions")
+                .document(division)
+                .collection("memberships")
+                .document(customer_email)
+                .update(
+                    {
+                        "membershipPaid": True,
+                        "lastPaymentDate": firestore.SERVER_TIMESTAMP,
+                    }
+                )
+            )
 
         # ✅ Store the payment record in Firestore
-        payment_ref = (db.collection("clubs").document(club_name)
-                       .collection("ageGroups").document(age_group)
-                       .collection("divisions").document(division)
-                       .collection("payments").document(customer_email))
+        payment_ref = (
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
+            .collection("payments")
+            .document(customer_email)
+        )
 
         payment_ref.set(
             {
@@ -677,13 +691,16 @@ def list_transactions():
 
         # 🔍 Retrieve transactions from Firestore
         transactions_ref = (
-            (db.collection("clubs").document(club_name)
-            .collection("ageGroups").document(age_group)
-            .collection("divisions").document(division)
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
             .collection("payments")
             .where("email", "==", user_email)
             .order_by("timestamp", direction=fs.Query.DESCENDING)
-            .stream())
+            .stream()
         )
 
         transactions = []
@@ -708,7 +725,7 @@ def list_transactions():
     except Exception as e:
         logger.error("Error retrieving transactions: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
-    
+
 
 @app.route("/stripe/login-link", methods=["POST"])
 def create_stripe_login_link():
@@ -728,7 +745,10 @@ def create_stripe_login_link():
         stripe_account_id = club_data.get("stripe_account_id")
 
         if not stripe_account_id:
-            return jsonify({"error": "Club does not have a Stripe Express account"}), 400
+            return (
+                jsonify({"error": "Club does not have a Stripe Express account"}),
+                400,
+            )
 
         # ✅ Generate login link for Stripe Express Dashboard
         login_link = stripe.Account.create_login_link(stripe_account_id)
@@ -740,6 +760,7 @@ def create_stripe_login_link():
     except Exception as e:
         logger.error("Unexpected error: %s", str(e))
         return jsonify({"error": "Internal server error"}), 500
+
 
 # Get all payments - GET /payments
 @app.route("/payments", methods=["GET"])
@@ -753,9 +774,12 @@ def get_payments():
             return jsonify({"error": "Missing required query parameters"}), 400
 
         payments_ref = (
-            db.collection("clubs").document(club_name)
-            .collection("ageGroups").document(age_group)
-            .collection("divisions").document(division)
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
             .collection("payments")
             .stream()
         )

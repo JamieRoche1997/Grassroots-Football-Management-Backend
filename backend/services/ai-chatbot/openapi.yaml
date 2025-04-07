@@ -203,7 +203,6 @@ paths:
         '500':
           description: Internal server error
 
-
   /user/pre-register:
     post:
       x-google-backend:
@@ -362,7 +361,8 @@ paths:
           description: Profile not found
         '500':
           description: Internal server error
-          
+
+
   # Membership Microservice Routes
   /membership:
     post:
@@ -572,6 +572,7 @@ paths:
           description: Missing or invalid query parameters
         '500':
           description: Internal server error
+
 
   # Team Management Microservice Routes
   /club/create-join:
@@ -836,6 +837,7 @@ paths:
           description: Missing or invalid query parameters
         '500':
           description: Internal server error
+
 
   # Schedule Management Microservice Routes
   /schedule/fixture:
@@ -1200,8 +1202,166 @@ paths:
         '500':
           description: Internal server error.
 
+  /schedule/training/availability:
+    post:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Update training availability
+      description: Updates the availability status of a user for a specific training session
+      operationId: updateTrainingAvailability
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+              - clubName
+              - ageGroup
+              - division
+              - available
+              - trainingId
+            properties:
+              email:
+                type: string
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              available:
+                type: boolean
+              trainingId:
+                type: string
+      responses:
+        '200':
+          description: Availability updated
+        '500':
+          description: Internal server error
 
-  # Match Ratings Microservice Routes
+    get:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Get training availability
+      description: Fetches availability of all players for a specific training session
+      operationId: getTrainingAvailability
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+        - in: query
+          name: trainingId
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of availability responses
+        '400':
+          description: Missing or invalid parameters
+        '500':
+          description: Internal server error
+
+  /schedule/fixture/availability:
+    post:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Update or fetch fixture availability
+      description: Updates or fetches availability of players for a specific fixture.
+      operationId: fixtureAvailability
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - clubName
+              - ageGroup
+              - division
+              - matchId
+            properties:
+              clubName:
+                type: string
+              ageGroup:
+                type: string
+              division:
+                type: string
+              email:
+                type: string
+              available:
+                type: boolean
+              matchId:
+                type: string
+      responses:
+        '200':
+          description: Success
+        '500':
+          description: Internal server error
+
+    get:
+      x-google-backend:
+        address: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-schedule-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Get fixture availability
+      description: Fetches availability of all players for a specific fixture
+      operationId: getFixtureAvailability
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: clubName
+          required: true
+          type: string
+        - in: query
+          name: ageGroup
+          required: true
+          type: string
+        - in: query
+          name: division
+          required: true
+          type: string
+        - in: query
+          name: matchId
+          required: true
+          type: string
+      responses:
+        '200':
+          description: List of availability responses
+        '400':
+          description: Missing or invalid parameters
+        '500':
+          description: Internal server error
+
+
+  # Match Management Microservice Routes
   /fixture/lineups:
     post:
       x-google-backend:
@@ -1720,6 +1880,7 @@ paths:
         '500':
           description: Internal server error.
 
+
   # Carpool Microservice Routes
   /carpool/offer:
     post:
@@ -1968,6 +2129,7 @@ paths:
         '500':
           description: Internal server error
  
+
  # Payments Microservice Routes
   /stripe/status:
     get:
@@ -2594,6 +2756,7 @@ paths:
                 type: string
                 example: Internal server error
 
+
   # AI Assistant Microservice Routes
   /query-ai:
     post:
@@ -2680,6 +2843,7 @@ paths:
           description: Forbidden - Email mismatch (token does not match provided email)
         '500':
           description: Internal server error
+
 
   # Player Stats Microservice Routes
   /stats/update:
@@ -2929,6 +3093,7 @@ paths:
           description: Missing or invalid query parameters
         '500':
           description: Internal server error
+
 
   # Notification Microservice Routes
   /add-fcm-token:

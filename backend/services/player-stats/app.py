@@ -12,6 +12,7 @@ CORS(app)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 ### 📌 Load Firebase Secret ###
 def load_service_account_secret():
     try:
@@ -19,12 +20,15 @@ def load_service_account_secret():
         project_id = "grassroots-football-management"
         secret_name = "firebase-service-account"
         secret_version = "latest"
-        secret_path = f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
+        secret_path = (
+            f"projects/{project_id}/secrets/{secret_name}/versions/{secret_version}"
+        )
         response = client.access_secret_version(request={"name": secret_path})
         return json.loads(response.payload.data.decode("UTF-8"))
     except Exception as e:
         logger.error("Error loading service account secret: %s", e)
         raise
+
 
 ### 📌 Firebase Initialization ###
 try:
@@ -36,22 +40,37 @@ except Exception as e:
     logger.error("Failed to initialize Firebase Admin: %s", e)
     raise
 
+
 ### 📌 Helper Function to Get Player Stats Reference ###
 def player_stats_ref(club_name, age_group, division, player_email):
-    return (db.collection("clubs").document(club_name)
-            .collection("ageGroups").document(age_group)
-            .collection("divisions").document(division)
-            .collection("playerStats").document(player_email))
+    return (
+        db.collection("clubs")
+        .document(club_name)
+        .collection("ageGroups")
+        .document(age_group)
+        .collection("divisions")
+        .document(division)
+        .collection("playerStats")
+        .document(player_email)
+    )
+
 
 ### 📌 Update Player Stats API ###
-@app.route('/stats/update', methods=['POST'])
+@app.route("/stats/update", methods=["POST"])
 def update_player_stats():
     """
     Updates player stats when a new event (goal, assist, card) is added to a match.
     """
     try:
         data = request.json
-        required_fields = ["clubName", "ageGroup", "division", "playerEmail", "playerName", "eventType"]
+        required_fields = [
+            "clubName",
+            "ageGroup",
+            "division",
+            "playerEmail",
+            "playerName",
+            "eventType",
+        ]
 
         if any(field not in data for field in required_fields):
             return jsonify({"error": "Missing required fields"}), 400
@@ -83,14 +102,20 @@ def update_player_stats():
             player_stats["redCards"] += 1
 
         ref.set(player_stats, merge=True)
-        return jsonify({"message": f"Player stats updated for {player_name} ({player_email})"}), 200
+        return (
+            jsonify(
+                {"message": f"Player stats updated for {player_name} ({player_email})"}
+            ),
+            200,
+        )
 
     except Exception as e:
         logger.exception("Error updating player stats")
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
+
 ### 📌 Get Player Stats API (By Email) ###
-@app.route('/stats/get', methods=['GET'])
+@app.route("/stats/get", methods=["GET"])
 def get_player_stats():
     """
     Retrieves player statistics for a given player by email.
@@ -116,8 +141,9 @@ def get_player_stats():
         logger.exception("Error retrieving player stats")
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
+
 ### 📌 Get Player Stats By Name ###
-@app.route('/stats/search', methods=['GET'])
+@app.route("/stats/search", methods=["GET"])
 def search_players_by_name():
     """
     Searches for players by name and returns their stats.
@@ -131,10 +157,15 @@ def search_players_by_name():
         if not club_name or not age_group or not division or not player_name:
             return jsonify({"error": "Missing required query parameters"}), 400
 
-        player_stats_ref = db.collection("clubs").document(club_name) \
-            .collection("ageGroups").document(age_group) \
-            .collection("divisions").document(division) \
+        player_stats_ref = (
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
             .collection("playerStats")
+        )
 
         results = []
         for doc in player_stats_ref.stream():
@@ -151,8 +182,9 @@ def search_players_by_name():
         logger.exception("Error searching players by name")
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
+
 ### 📌 List All Players' Stats ###
-@app.route('/stats/list', methods=['GET'])
+@app.route("/stats/list", methods=["GET"])
 def list_all_player_stats():
     """
     Lists all player stats and returns top performers (e.g., top scorer, most yellow cards).
@@ -165,10 +197,15 @@ def list_all_player_stats():
         if not club_name or not age_group or not division:
             return jsonify({"error": "Missing required query parameters"}), 400
 
-        player_stats_ref = db.collection("clubs").document(club_name) \
-            .collection("ageGroups").document(age_group) \
-            .collection("divisions").document(division) \
+        player_stats_ref = (
+            db.collection("clubs")
+            .document(club_name)
+            .collection("ageGroups")
+            .document(age_group)
+            .collection("divisions")
+            .document(division)
             .collection("playerStats")
+        )
 
         stats_list = [doc.to_dict() for doc in player_stats_ref.stream()]
         if not stats_list:
@@ -176,14 +213,16 @@ def list_all_player_stats():
 
         top_scorer = max(stats_list, key=lambda x: x["goals"], default=None)
         most_assists = max(stats_list, key=lambda x: x["assists"], default=None)
-        most_yellow_cards = max(stats_list, key=lambda x: x["yellowCards"], default=None)
+        most_yellow_cards = max(
+            stats_list, key=lambda x: x["yellowCards"], default=None
+        )
         most_red_cards = max(stats_list, key=lambda x: x["redCards"], default=None)
 
         leaderboard = {
             "topScorer": top_scorer,
             "mostAssists": most_assists,
             "mostYellowCards": most_yellow_cards,
-            "mostRedCards": most_red_cards
+            "mostRedCards": most_red_cards,
         }
 
         return jsonify({"leaderboard": leaderboard, "allPlayers": stats_list}), 200
@@ -191,6 +230,7 @@ def list_all_player_stats():
     except Exception as e:
         logger.exception("Error listing player stats")
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
+
 
 # Run the Flask app
 if __name__ == "__main__":

@@ -203,7 +203,6 @@ paths:
         '500':
           description: Internal server error
 
-
   /user/pre-register:
     post:
       x-google-backend:
@@ -362,7 +361,8 @@ paths:
           description: Profile not found
         '500':
           description: Internal server error
-          
+
+
   # Membership Microservice Routes
   /membership:
     post:
@@ -572,6 +572,7 @@ paths:
           description: Missing or invalid query parameters
         '500':
           description: Internal server error
+
 
   # Team Management Microservice Routes
   /club/create-join:
@@ -836,6 +837,7 @@ paths:
           description: Missing or invalid query parameters
         '500':
           description: Internal server error
+
 
   # Schedule Management Microservice Routes
   /schedule/fixture:
@@ -1280,7 +1282,6 @@ paths:
         '500':
           description: Internal server error
 
-
   /schedule/fixture/availability:
     post:
       x-google-backend:
@@ -1360,8 +1361,7 @@ paths:
           description: Internal server error
 
 
-
-  # Match Ratings Microservice Routes
+  # Match Management Microservice Routes
   /fixture/lineups:
     post:
       x-google-backend:
@@ -1880,6 +1880,7 @@ paths:
         '500':
           description: Internal server error.
 
+
   # Carpool Microservice Routes
   /carpool/offer:
     post:
@@ -2128,6 +2129,7 @@ paths:
         '500':
           description: Internal server error
  
+
  # Payments Microservice Routes
   /stripe/status:
     get:
@@ -2754,6 +2756,7 @@ paths:
                 type: string
                 example: Internal server error
 
+
   # AI Assistant Microservice Routes
   /query-ai:
     post:
@@ -2840,6 +2843,7 @@ paths:
           description: Forbidden - Email mismatch (token does not match provided email)
         '500':
           description: Internal server error
+
 
   # Player Stats Microservice Routes
   /stats/update:
@@ -3089,6 +3093,7 @@ paths:
           description: Missing or invalid query parameters
         '500':
           description: Internal server error
+
 
   # Notification Microservice Routes
   /add-fcm-token:
