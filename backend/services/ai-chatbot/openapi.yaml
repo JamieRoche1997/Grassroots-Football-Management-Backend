@@ -618,6 +618,30 @@ paths:
         '500':
           description: Internal server error
 
+  /club/{email}:
+    delete:
+      x-google-backend:
+        address: https://microservice-team-management-180320540339.europe-west2.run.app
+        jwtAudience: https://microservice-team-management-180320540339.europe-west2.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      summary: Delete a club
+      description: Deletes a club using the club name
+      operationId: deleteClub
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: clubName
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Club deleted successfully
+        '404':
+          description: Club not found
+        '500':
+          description: Internal server error
+
   /club/search:
     get:
       x-google-backend:

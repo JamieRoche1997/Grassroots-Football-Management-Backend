@@ -56,6 +56,10 @@ except Exception as e:
 db = firestore.client()
 
 
+# Collection reference
+clubs_ref = db.collection("clubs")
+
+
 @app.route("/club/create-join", methods=["POST"])
 def create_or_join_club():
     try:
@@ -121,6 +125,20 @@ def create_or_join_club():
 
     except Exception as e:
         logging.error("Unexpected error: %s", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+
+# Delete Club - DELETE /club/{clubName}
+@app.route("/club/<clubName>", methods=["DELETE"])
+def delete_profile(clubName):
+    try:
+
+        clubs_ref.document(clubName).delete()
+
+        return jsonify({"message": "Club deleted successfully"}), 200
+
+    except Exception as e:
+        logger.error("Error deleting club for %s: %s", clubName, str(e))
         return jsonify({"error": "Internal server error"}), 500
 
 

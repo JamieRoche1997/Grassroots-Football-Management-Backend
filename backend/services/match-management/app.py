@@ -135,7 +135,12 @@ def manage_events():
         if request.method == "POST":
             event_ref = ref.collection("events").document()
             event_ref.set(data["event"])
-            return jsonify({"message": "Event added successfully"}), 201
+            return (
+                jsonify(
+                    {"message": "Event added successfully", "eventId": event_ref.id}
+                ),
+                201,
+            )
 
         elif request.method == "PATCH":
             event_id = data["eventId"]

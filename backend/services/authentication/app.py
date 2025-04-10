@@ -215,6 +215,7 @@ def login():
                     "message": "Login successful",
                     "uid": uid,
                     "email": email,
+                    "idToken": id_token,
                 }
             ),
             200,

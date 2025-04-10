@@ -144,7 +144,12 @@ def add_fixture():
             )
 
         return (
-            jsonify({"message": "Training session added and notifications sent"}),
+            jsonify(
+                {
+                    "message": "Training session added and notifications sent",
+                    "matchId": match_id,
+                }
+            ),
             201,
         )
 
@@ -449,7 +454,12 @@ def add_training():
             )
 
         return (
-            jsonify({"message": "Training session added and notifications sent"}),
+            jsonify(
+                {
+                    "message": "Training session added and notifications sent",
+                    "trainingId": training_id,
+                }
+            ),
             201,
         )
 
