@@ -2490,8 +2490,8 @@ paths:
     post:
       x-google-backend:
         address: https://microservice-payments-180320540339.europe-west2.run.app
-        jwtAudience: https://microservice-payments-180320540339.europe-west2.run.app
         path_translation: APPEND_PATH_TO_ADDRESS
+      security: []
       summary: Stripe webhook for processing payments
       description: Handles Stripe webhook events such as successful payments.
       operationId: stripeWebhook
