@@ -81,6 +81,7 @@ def update_player_stats():
         player_email = data["playerEmail"]
         player_name = data["playerName"]
         event_type = data["eventType"]
+        is_home_game = data.get("isHomeGame", True)  # Default to home game if not specified
 
         ref = player_stats_ref(club_name, age_group, division, player_email)
         player_stats = ref.get().to_dict() or {
@@ -90,16 +91,60 @@ def update_player_stats():
             "assists": 0,
             "yellowCards": 0,
             "redCards": 0,
+            "gamesPlayed": 0,
+            "homeStats": {
+                "goals": 0,
+                "assists": 0,
+                "yellowCards": 0,
+                "redCards": 0,
+                "gamesPlayed": 0,
+            },
+            "awayStats": {
+                "goals": 0,
+                "assists": 0,
+                "yellowCards": 0,
+                "redCards": 0,
+                "gamesPlayed": 0,
+            },
         }
 
+        # Initialize nested stats if they don't exist
+        if "homeStats" not in player_stats:
+            player_stats["homeStats"] = {
+                "goals": 0,
+                "assists": 0,
+                "yellowCards": 0,
+                "redCards": 0,
+                "gamesPlayed": 0,
+            }
+        
+        if "awayStats" not in player_stats:
+            player_stats["awayStats"] = {
+                "goals": 0,
+                "assists": 0,
+                "yellowCards": 0,
+                "redCards": 0,
+                "gamesPlayed": 0,
+            }
+
+        # Update appropriate stats based on event type
+        location_stats = "homeStats" if is_home_game else "awayStats"
+        
         if event_type == "goal":
             player_stats["goals"] += 1
+            player_stats[location_stats]["goals"] += 1
         elif event_type == "assist":
             player_stats["assists"] += 1
+            player_stats[location_stats]["assists"] += 1
         elif event_type == "yellowCard":
             player_stats["yellowCards"] += 1
+            player_stats[location_stats]["yellowCards"] += 1
         elif event_type == "redCard":
             player_stats["redCards"] += 1
+            player_stats[location_stats]["redCards"] += 1
+        elif event_type == "gamesPlayed":
+            player_stats["gamesPlayed"] += 1
+            player_stats[location_stats]["gamesPlayed"] += 1
 
         ref.set(player_stats, merge=True)
         return (
