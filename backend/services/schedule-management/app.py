@@ -134,7 +134,7 @@ def add_fixture():
             # Save to Firestore
             notifications_ref.document(email).collection("messages").add(
                 {
-                    "type": "training",
+                    "type": "match",
                     "title": "📅 New Fixture Scheduled",
                     "body": f"Date: {formatted_date}, Time: {formatted_time}, {home_team} vs {away_team}",
                     "timestamp": fs.SERVER_TIMESTAMP,
@@ -146,7 +146,7 @@ def add_fixture():
         return (
             jsonify(
                 {
-                    "message": "Training session added and notifications sent",
+                    "message": "Match added and notifications sent",
                     "matchId": match_id,
                 }
             ),
